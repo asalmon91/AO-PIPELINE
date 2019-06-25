@@ -1,0 +1,4 @@
+mod	thr
+confocal	0.010291307
+split_det	0.018341416
+avg	0.025451048
