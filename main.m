@@ -1,4 +1,4 @@
-function live_pipe(varargin)
+function main(varargin)
 %live_pipe Waits for new videos in root_path and begins processing them
 % optional "name, value" pair input arguments include:
 %   @root_path: the full path to the directory which contains the "Raw" and
