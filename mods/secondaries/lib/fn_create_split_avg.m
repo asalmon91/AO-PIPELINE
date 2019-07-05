@@ -1,6 +1,9 @@
 function [status, err] = fn_create_split_avg(in_path, direct_fname)
 %create_split_avg finds corresponding reflect and creates the split and avg
 %videos
+% todo: make new version which accepts a cell array of function handles
+% which tells you how to combine the channels rather than doing
+% specifically split and avg, requiring all the code to be written twice
 
 % Default, false = failure
 status = false;
@@ -105,15 +108,44 @@ catch
     end
     
     % Delete files as well to avoid the pipeline thinking they exist
-    if exist(split_ffname, 'file') ~= 0
+    k=0;
+    timeout = 1e3;
+    while exist(split_ffname, 'file') ~= 0
         fprintf('Failed to write %s, removing.\n', split_fname);
         delete(split_ffname);
+        k=k+1;
+        if k == timeout
+            error('Infinite loop trying to remove secondary');
+        end
     end
-    if exist(avg_ffname, 'file') ~= 0
+    k=0;
+    while exist(avg_ffname, 'file') ~= 0
         fprintf('Failed to write %s, removing.\n', avg_fname);
         delete(avg_ffname);
+        k=k+1;
+        if k == timeout
+            error('Infinite loop trying to remove secondary');
+        end
     end
     
+    return;
+end
+
+%% Check split and average for defects
+vr_split = VideoReader(split_ffname);
+vr_avg = VideoReader(avg_ffname);
+if round(vr_split.Duration * vr_split.FrameRate) ~= nFrames || ...
+        round(vr_avg.Duration * vr_avg.FrameRate) ~= nFrames
+    clear vr_split vr_avg
+    [delete_split_fail, split_stdout] = ...
+        system(sprintf('del "%s"', split_ffname));
+    [delete_avg_fail, avg_stdout] = ...
+        system(sprintf('del "%s"', avg_ffname));
+    if delete_split_fail ~= 0 || delete_avg_fail || ...
+            ~isempty(split_stdout) || ~isempty(avg_stdout)
+        error('Failed to remove faulty secondaries');
+    end
+    delete(avg_ffname);
     return;
 end
 
