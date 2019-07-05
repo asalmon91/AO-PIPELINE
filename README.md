@@ -1,4 +1,4 @@
-# AO-PIPE
+# AO-PIPELINE
 Fully automated image processing pipeline for AOSLO images
 The current state is pretty raw and rigid, the goal is to become much more modular so that processing modules can be swapped out with the development of proper adapters.
 
