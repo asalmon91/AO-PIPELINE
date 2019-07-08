@@ -236,7 +236,7 @@ if numel(montages) > 1
         getReprocessVids(montages, locs);
     % Montages now includes video pairings, amounts, and angles
     
-    for ii=1:numel(reprocess_vid_nums)
+    parfor ii=1:numel(reprocess_vid_nums)
         this_aviSet = aviSets(strcmp({aviSets.num}, reprocess_vid_nums{ii})); %#ok<PFBNS>
         angles = getAngles(this_aviSet.num, montages);
         frame_ids = getArfsFramesAngle(this_aviSet.num, raw_path, angles);
