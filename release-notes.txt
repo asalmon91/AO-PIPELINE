@@ -1,25 +1,32 @@
 Overall
+• None
 
 Progress
+• None
 
 Dsin (Correcting sinusoidal distortion from resonant scanner)
+• None
 
-Secondary modalities (Combining signals from multiple cameras)
+Secondary modalities (Combining signals from multiple detectors)
+• None
 
 ARFS (Automated reference frame selection - for use in registration and averaging)
 • Changed rejection criterion from mean-3SD to mean-SD to enforce a more strict rejection of low-quality frames
-• Bug fix in contrast-based frame rejection (indexing error which was selection wrong frames; same error was not present in mean intensity, sharpness, or similarity metrics)
-• Bug fix (perhaps the dumbest one yet) - after both contrast, sharpness, and similarity-based rejections, the frames data structure was not updated to reflect the rejected frames.
+• Bug fix: in contrast-based frame rejection (indexing error which was selection wrong frames; same error was not present in mean intensity, sharpness, or similarity metrics)
+• Bug fix: after contrast, sharpness, and similarity-based rejections, the frames data structure was not updated to reflect the rejected frames. This has been fixed.
 
 NEST (Normalized cross-correlation (NCC) parameter estimation)
+• None
 
 DeMotion (Strip-based registration and averaging)
 • Included message box warning about registration failures
 • Changed the minimum height requirement for a successfully registered image from 450 to 400; for ROI purposes, this should be sufficient, for montaging purposes, any height deficiency can now be dealt with by finding a reference frame more superior or inferior to the original reference frame.
 
 EMR (Eye motion removal)
+• None
 
 Trim (Removes transparent layer from images output by EMR)
+• None
 
 Automontager (Automatically montages images; automatically reprocesses videos to fill in any gaps where the automontager is unable to connect images)
 • Bug fix: reading coordinate files
