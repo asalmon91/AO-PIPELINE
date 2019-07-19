@@ -235,17 +235,19 @@ if numel(montages) > 1
     [reprocess_vid_nums, vid_pairs, montages] = ...
         getReprocessVids(montages, locs);
     % Montages now includes video pairings, amounts, and angles
-    
+    % Check to see if it's even possible to connect 
+    all_mi = getMontageIndex(reprocess_vid_nums, montages);
+
     parfor ii=1:numel(reprocess_vid_nums)
         this_aviSet = aviSets(strcmp({aviSets.num}, reprocess_vid_nums{ii})); %#ok<PFBNS>
         angles = getAngles(this_aviSet.num, montages);
         frame_ids = getArfsFramesAngle(this_aviSet.num, raw_path, angles);
-        
+
         for jj=1:numel(frame_ids)
             [ra_success, msg, tif_fnames] = regAvg(...
                 ini, root_path, raw_path, ...
                 this_aviSet, dsins, mod_order, lambda_order, ...
-                pcc_thrs, overwrite, frame_ids);
+                pcc_thrs, overwrite, frame_ids(jj));
             if ~ra_success
                 disp(msg);
                 continue;
@@ -255,8 +257,17 @@ if numel(montages) > 1
     end
     
     % Set up mini-montages
+    fixable_montages = unique(all_mi);
+    if numel(montages) ~= numel(fixable_montages)
+        warning('Cannot fix all breaks in the montage; missing images or insufficient overlap');
+    end
+    
+    % Start tracking which disjoints can be fixed by minimontaging
     disjoint_fixed = false(size(montages));
     disjoint_fixed(1) = true; % 1 is master
+    % Just ignore the impossible ones by saying they're fixed
+    disjoint_fixed(~ismember(1:numel(montages), fixable_montages)) = true;
+    
     for ii=1:size(vid_pairs, 1)
         % Get image pair
         vid_nums = vid_pairs(ii,:);
@@ -274,7 +285,7 @@ if numel(montages) > 1
         % Delete that minimontage
         rmdir(mm_path, 's');
         
-        if numel(mini_montage) ==1
+        if numel(mini_montage) == 1
             disjoint_fixed(mi) = true;
         end
     end
@@ -293,9 +304,6 @@ end
 %% Montage those guys
 ps = getIniPath(ini, 'Adobe Photoshop');
 runAllJsx(ps, out_path)
-% todo: until I can figure out how to get the transformations from the
-% automontager, we'll have the user verify when the montage is done
-% building and the layers have been exported
 
 %% Output aligned images for use in whole-montage spacing assessment
 aligned_tif_path = uigetdir(out_path, ...

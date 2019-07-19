@@ -1,4 +1,4 @@
-function data = getSharpness(imgs, data)
+function data = getSharpness(imgs, data, sdx)
 %getSharpness Computes the mean gradient magnitude of an image using a
 %Sobel filter 
 
@@ -17,10 +17,10 @@ end
 % Find outliers
 sharps([data.rej]) = []; % Remove empty elements
 sharps_norm = (sharps - mean(sharps))./std(sharps);
-outliers = sharps_norm < -3;
+outliers = sharps_norm < -sdx;
 % Get current list of kept frame ids
 ids = [data(~[data.rej]).id];
-rejectFrames(data,ids(outliers), mfilename);
+data = rejectFrames(data, ids(outliers), mfilename);
 
 end
 

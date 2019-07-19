@@ -30,6 +30,7 @@ for ii=1:numel(montages)
 end
 
 angles = unique(angles);
+angles = angles.*-1; % Quick fix to deal with Euclidean vs Image y-axis
 
 end
 

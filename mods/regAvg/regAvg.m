@@ -19,7 +19,7 @@ ref_frames_direct = ~exist('refFrames', 'var') == 0;
 
 %% Constants
 % todo: make opt. input arguments
-FAIL_HT     = 450;
+FAIL_HT     = 400;
 FAIL_CROP   = 1;
 FAIL_N      = 1;
 MAX_FRAMES  = 50;
@@ -284,8 +284,14 @@ for ii=1:numel(mod_order)
 end
 
 %% Write output
-% todo: add more information than just success/failure
 save(fullfile(raw_path, regAvg_out_fname), 'aviSet', 'status', 'msg');
+
+% Warn users about failure so they could re-image this area
+if ~status
+    msgbox(sprintf('Video %s failed to register.\n%s', aviSet.num, msg), ...
+        'Reg Fail', 'Error');
+end
+
 
 end
 

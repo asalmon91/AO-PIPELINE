@@ -21,6 +21,7 @@ global TRACK_MOTION;
 global MFPC;
 % global wb;
 global pcc_thr;
+REJ_THR = 1; % Rejection threshold, a standard deviation multiplier
 fprintf('PCC threshold=%1.3f, MFPC=%i, Tracking motion: %i\n', ...
     pcc_thr, MFPC, TRACK_MOTION);
 
@@ -29,16 +30,16 @@ frames = initFrames(size(vid,3));
 
 %% Reject frames based on mean intensity, contrast, and sharpness
 frames = rejectDuplicates(vid, frames);
-frames = getInt(vid, frames);
-frames = getContrast(vid, frames);
-frames = getSharpness(vid, frames);
+frames = getInt(vid, frames, REJ_THR);
+frames = getContrast(vid, frames, REJ_THR);
+frames = getSharpness(vid, frames, REJ_THR);
 
 %% Intra-frame motion detection
 % arfs_data = getIFM(vid, arfs_data, wb);
 
 %% Inter-frame motion detection
 % Will only do 1st pass if TRACK_MOTION is false
-[frames, ~] = getMT(vid, frames, pcc_thr);
+[frames, ~] = getMT(vid, frames, pcc_thr, REJ_THR);
 % frames.pcc1stPass = pcc1stPass;
 
 %% STEP 5: CLUSTER ANALYSIS OF FIXATIONS

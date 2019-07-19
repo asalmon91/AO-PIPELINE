@@ -30,6 +30,12 @@ xy  = frames(success_frame).xy;
 % Find the frame that is farthest along the axis specified by @in_angle
 % within the same linked group as the successful reference frame
 ids = [frames(~[frames.rej]' & [frames.link_id]' == lid).id]';
+
+% Reject frames that are 1SD < mean PCC 
+pcc_other = [frames(ids).pcc]';
+ids(pcc_other < mean(pcc_other) - std(pcc_other)) = [];
+
+% Get XY
 xy_other = vertcat(frames(ids).xy);
 xy_rel = xy_other - xy;
 [theta, rho] = cart2pol(xy_rel(:,1), xy_rel(:,2));
@@ -48,6 +54,7 @@ for ii=1:numel(in_angle)
     end
 end
 out_frame_indices(remove) = [];
+out_frame_indices = unique(out_frame_indices);
 
 % Troubleshooting graphics
 % for ii=1:numel(in_angle)

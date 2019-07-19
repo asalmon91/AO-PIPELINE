@@ -1,4 +1,4 @@
-function [data, pcc1stPass] = getMT(imgs, data, pcc_thr)
+function [data, pcc1stPass] = getMT(imgs, data, pcc_thr, sdx)
 %getMT tracks interframe motion in a video
 
 % global variables
@@ -207,9 +207,9 @@ data = rejectSmallGroups(data, MFPC);
 pcc = [data(~[data.rej]).pcc];
 ids = [data(~[data.rej]).id];
 pcc_norm = (pcc - mean(pcc))./std(pcc);
-outliers = pcc_norm < -3;
+outliers = pcc_norm < -sdx;
 if any(outliers)
-    rejectFrames(data, ids(outliers), mfilename)
+    data = rejectFrames(data, ids(outliers), mfilename);
 end
 
 end % End of MT

@@ -1,4 +1,4 @@
-function data = getContrast(imgs, data)
+function data = getContrast(imgs, data, sdx)
 %getContrast 
 
 % global wb;
@@ -18,12 +18,12 @@ for ii=1:numel(data)
 %     waitbar(ii/numel(data), wb);
 end
 con([data.rej]) = [];
-
+ids = [data(~[data.rej]).id];
 
 con_norm = (con - mean(con))./std(con);
-badFrames = find(con_norm < -3);
+badFrames = ids(con_norm < -sdx);
 if ~isempty(badFrames)
-    rejectFrames(data, badFrames, mfilename);
+    data = rejectFrames(data, badFrames, mfilename);
 end
 
 end
