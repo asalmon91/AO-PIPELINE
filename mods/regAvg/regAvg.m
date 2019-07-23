@@ -266,7 +266,7 @@ for ii=1:numel(mod_order)
         if emr_fail
             status = fail;
             msg = emr_msg;
-            return;
+            break;
         end
     end
     

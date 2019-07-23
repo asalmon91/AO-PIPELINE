@@ -35,18 +35,31 @@ eyes(remove) = [];
 vid_nums = loc_body(:, vid_c);
 
 %% Combine H and V coords
-% hc = strcmpi(loc_head, 'Horizontal Location');
-% vc = strcmpi(loc_head, 'Vertical Location');
-% coords = horzcat(...
-%     num2str(cell2mat(loc_body(:, hc)), '%1.3f'), ...
-%     repmat(', ', size(loc_body, 1), 1), ...
-%     num2str(cell2mat(loc_body(:, vc)), '%1.3f'));
-coords = loc_body(:, strcmpi(loc_head, 'X, Y'));
-for ii=1:numel(coords)
-    if isnan(coords{ii})
-        coords{ii} = '0, 0';
+% Convert the text in the location column, which is in the format 'x, y',
+% to doubles so that they can be converted to a char array to match the
+% formatting of the human locations
+xy = loc_body(:, strcmpi(loc_head, 'X, Y'));
+x = cell(size(xy));
+y = x;
+for ii=1:numel(xy)
+    if isnan(xy{ii})
+        xy{ii} = '0, 0';
+    end
+    xy{ii} = strrep(xy{ii}, ' ', '');
+    xy_parts = strsplit(xy{ii}, ',');
+    if numel(xy_parts) == 2
+        x{ii} = str2double(xy_parts{1});
+        y{ii} = str2double(xy_parts{2});
+    else
+        warning('Error parsing %s, defaulting to 0, 0', xy{ii});
+        x{ii} = 0;
+        y{ii} = 0;
     end
 end
+coords = horzcat(...
+    num2str(cell2mat(x), '%1.3f'), ...
+    repmat(', ', size(loc_body, 1), 1), ...
+    num2str(cell2mat(y), '%1.3f'));
 
 %% Fields-of-view
 % for now, fovs are symmetric, so just take one fov col

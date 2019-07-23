@@ -23,7 +23,7 @@ DeMotion (Strip-based registration and averaging)
 • Changed the minimum height requirement for a successfully registered image from 450 to 400; for ROI purposes, this should be sufficient, for montaging purposes, any height deficiency can now be dealt with by finding a reference frame more superior or inferior to the original reference frame.
 
 EMR (Eye motion removal)
-• None
+• Bug fix: error reporting was backwards (failures interpreted as successes)
 
 Trim (Removes transparent layer from images output by EMR)
 • None
@@ -32,3 +32,4 @@ Automontager (Automatically montages images; automatically reprocesses videos to
 • Bug fix: reading coordinate files
 • Bug fix: incorrect y-axis indexing for automontager feedback step
 • Enhancement: filter out frames with low PCC before reprocessing to connect disjoints in montage
+• Bug fix: animal imaging notes parser was outputting coordinates as a cell array instead of a char array, causing an improper indexing crash when it went to reprocess videos.
