@@ -244,7 +244,7 @@ if numel(montages) > 1
         frame_ids = getArfsFramesAngle(this_aviSet.num, raw_path, angles);
 
         for jj=1:numel(frame_ids)
-            [ra_success, msg, tif_fnames] = regAvg(...
+            [ra_success, msg] = regAvg(...
                 ini, root_path, raw_path, ...
                 this_aviSet, dsins, mod_order, lambda_order, ...
                 pcc_thrs, overwrite, frame_ids(jj));
@@ -252,7 +252,6 @@ if numel(montages) > 1
                 disp(msg);
                 continue;
             end
-            trim_emr_edges(img_path, tif_fnames);
         end
     end
     
