@@ -4,14 +4,25 @@ function loc_data = processAnimalLocFile( loc_path, loc_fname, ...
 % Animals can't fixate, so we have a completely different method of note
 % taking
 
+%% Constants
+VID_NUM_TXT = 'Video #';
+
 %% Read file
 [~,~,raw] = xlsread(fullfile(loc_path, loc_fname), sheet_name);
 loc_head = raw(1, :);
 loc_body = raw(2:end, :);
 clear raw;
 
+%% Fill in blanks with last value
+for ii=1:numel(loc_head)
+    if strcmpi(loc_head, VID_NUM_TXT)
+        continue;
+    end
+    loc_body(:,ii) = copyDown(loc_body(:,ii));
+end
+
 %% Get correct video # labels
-vid_c = strcmpi(loc_head, 'video #');
+vid_c = strcmpi(loc_head, VID_NUM_TXT);
 vid_nums = loc_body(:, vid_c);
 remove = true(size(vid_nums));
 for ii=1:numel(vid_nums)
@@ -63,10 +74,20 @@ coords = horzcat(...
 
 %% Fields-of-view
 % for now, fovs are symmetric, so just take one fov col
-fovc = strcmpi(loc_head, 'FOV (°)');
-fovs = loc_body(:, fovc);
-fovs = copyDown(fovs);
-fovs = cell2mat(fovs);
+% Extract fov from aviSet (more reliable than notes)
+fovs = zeros(size(vid_nums));
+for ii=1:numel(vid_nums)
+    for jj=1:numel(aviSets)
+        if strcmp(vid_nums{ii}, aviSets(jj).num)
+            fovs(ii) = aviSets(jj).fov;
+            break;
+        end
+    end
+end
+% fovc = strcmpi(loc_head, 'FOV (°)');
+% fovs = loc_body(:, fovc);
+% fovs = copyDown(fovs);
+% fovs = cell2mat(fovs);
 
 %% Put data in structure
 loc_data.vidnums = vid_nums;
