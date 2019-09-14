@@ -226,6 +226,15 @@ for thisfile in os.listdir(dmp_folder_path):
                     print "Removing distortion from: "+image +"..."
                     mat_engi.Eye_Motion_Distortion_Repair(image_folder_path, image, rois.tolist(),
                                                           shift_array.tolist(), static_distortion, nargout=0)
+                    # Diagnostics:
+##                    shiftT = np.transpose(shift_array)
+##                    transhandle = open(pickle_path[0:-4] + "_transforms.csv", 'w')
+##                    np.savetxt(transhandle, shift_array, delimiter=',', fmt='%f')
+##                    transhandle.close()
+##                    crop_roi = np.transpose(rois.tolist())
+##                    roi_handle = open(pickle_path[0:-4] + "_crop_roi.csv", 'w')
+##                    np.savetxt(roi_handle, crop_roi, delimiter=',', fmt='%f')
+##                    transhandle.close()
 
                 # progo.step()
 

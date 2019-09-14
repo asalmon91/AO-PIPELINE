@@ -202,7 +202,7 @@ aviSets = filtOutDNP(aviSets, mod_order, lambda_order);
 
 %% Crop out warped edges after emr
 img_path = fullfile(root_path, 'Processed', 'SR_TIFs', 'Repaired');
-am_in_path = trim_emr_edges(img_path);
+% img_path = trim_emr_edges(img_path);
 
 %% Automontage
 out_path = fullfile(root_path, 'Montages', 'UCL_AM');
@@ -219,7 +219,7 @@ end
 % Get python 3 path
 py3 = getIniPath(ini, 'Python 3.7');
 fprintf('Montaging...\n');
-deployUCL_AM(py3, am_in_path, pos_ffname{1}, eye_tag, out_path);
+deployUCL_AM(py3, img_path, pos_ffname{1}, eye_tag, out_path);
 
 %% Montage feedback
 % todo: functionalize
@@ -238,13 +238,13 @@ if numel(montages) > 1
     % Check to see if it's even possible to connect 
     all_mi = getMontageIndex(reprocess_vid_nums, montages);
 
-    parfor ii=1:numel(reprocess_vid_nums)
+    for ii=1:numel(reprocess_vid_nums)
         this_aviSet = aviSets(strcmp({aviSets.num}, reprocess_vid_nums{ii})); %#ok<PFBNS>
         angles = getAngles(this_aviSet.num, montages);
         frame_ids = getArfsFramesAngle(this_aviSet.num, raw_path, angles);
 
         for jj=1:numel(frame_ids)
-            [ra_success, msg, tif_fnames] = regAvg(...
+            [ra_success, msg] = regAvg(...
                 ini, root_path, raw_path, ...
                 this_aviSet, dsins, mod_order, lambda_order, ...
                 pcc_thrs, overwrite, frame_ids(jj));
@@ -252,7 +252,6 @@ if numel(montages) > 1
                 disp(msg);
                 continue;
             end
-            trim_emr_edges(img_path, tif_fnames);
         end
     end
     
@@ -278,7 +277,7 @@ if numel(montages) > 1
             continue;
         end
         
-        mm_path = prepMiniMontage(am_in_path, vid_nums);
+        mm_path = prepMiniMontage(img_path, vid_nums);
         deployUCL_AM(py3, mm_path, pos_ffname{1}, eye_tag, mm_path);
         jsx_search = dir(fullfile(mm_path, '*.jsx'));
         mini_montage = parseJSX(fullfile(mm_path, jsx_search.name));
@@ -295,7 +294,7 @@ end
 % frames from each video. Try other modalities as well?
 
 if all(disjoint_fixed)
-    deployUCL_AM(py3, am_in_path, pos_ffname{1}, eye_tag, out_path);
+    deployUCL_AM(py3, img_path, pos_ffname{1}, eye_tag, out_path);
     jsx_search = dir(fullfile(out_path, '*.jsx'));
     montages = parseJSX(fullfile(out_path, jsx_search.name));
     quickDisplayMontage(montages);

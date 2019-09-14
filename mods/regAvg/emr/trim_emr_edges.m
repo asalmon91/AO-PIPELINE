@@ -52,7 +52,7 @@ for ii=1:numel(tif_dir)
     
     %% Write output
     out_fname = strrep(tif_dir(ii).name, '.tif', '_trim.tif');
-    imwrite(out_img, fullfile(out_path, out_fname));
+    imwrite(out_img, fullfile(out_path, out_fname), 'compression', 'none');
 end
 
 end

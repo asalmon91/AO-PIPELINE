@@ -290,9 +290,12 @@ clear tmp;
     warpedStk = warpedStk( round(cropbox(2)):round(cropbox(4)), round(cropbox(1)):round(cropbox(3)), : );    
 
     if length(imStk)== 1
-        
-        saveTransparentTif(warpedStk(:,:,1),fullfile(motion_path,'Repaired', [fName(1:end-4) '_repaired.tif']));
-        
+        trim_warpedStk = trim_transparent(warpedStk);
+%         saveTransparentTif(warpedStk(:,:,1),fullfile(motion_path,'Repaired', [fName(1:end-4) '_repaired.tif']));
+        out_ffname = fullfile(motion_path,'Repaired', ...
+            [fName(1:end-4) '_repaired.tif']);
+        imwrite(uint8(trim_warpedStk), out_ffname, 'compression', 'none');
+
 %         imwrite(warpedStk, fullfile(motion_path,'Repaired', [fName(1:end-4) '_repaired.tif']), 'Compression','lzw');
     else
         vidobj = VideoWriter( fullfile(motion_path,'Repaired', [fName(1:end-4) '_repaired.avi']), 'Grayscale AVI' );

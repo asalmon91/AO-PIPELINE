@@ -34,7 +34,7 @@ switch get(uit, 'tag')
         nest_col = strcmpi(labels, 'nest');
         demotion_col = strcmpi(labels, 'demotion');
         emr_col = strcmpi(labels, 'emr');
-        trim_col = strcmpi(labels, 'trim');
+%         trim_col = strcmpi(labels, 'trim');
         montage_col = strcmpi(labels, 'montage');
         analysis_col = strcmpi(labels, 'analysis');
         
@@ -43,7 +43,7 @@ switch get(uit, 'tag')
         fi = strfind(flip(raw_path), filesep);
         root_path = raw_path(1:end-fi(1));
         emr_path = fullfile(root_path, 'Processed', 'SR_TIFs', 'Repaired');
-        trim_path = fullfile(emr_path, 'trim');
+%         trim_path = fullfile(emr_path, 'trim');
         
         for ii=1:numel(data_struct)
             % Update number
@@ -134,15 +134,15 @@ switch get(uit, 'tag')
             end
             
             % Update trim
-            if isempty(uit_data{ii, trim_col}) || ~ uit_data{ii, trim_col}
-                if exist(trim_path, 'dir') ~= 0
-                    trim_search = dir(fullfile(trim_path, ...
-                        sprintf('*_%s_*_Repaired.tif', vid_num)));
-                    uit_data{ii, trim_col} = ~isempty(trim_search);
-                else
-                    uit_data{ii, trim_col} = false;
-                end
-            end
+%             if isempty(uit_data{ii, trim_col}) || ~ uit_data{ii, trim_col}
+%                 if exist(trim_path, 'dir') ~= 0
+%                     trim_search = dir(fullfile(trim_path, ...
+%                         sprintf('*_%s_*_Repaired.tif', vid_num)));
+%                     uit_data{ii, trim_col} = ~isempty(trim_search);
+%                 else
+%                     uit_data{ii, trim_col} = false;
+%                 end
+%             end
             
             % Update montage
             if isempty(uit_data{ii, montage_col}) || ...
