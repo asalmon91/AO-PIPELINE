@@ -13,14 +13,17 @@ fprintf('Initializing...\n');
 addpath(genpath('mods'));
 addpath(genpath('lib'));
 
+
 %% Installation
 ini = checkFirstRun();
+
 
 %% Constants
 WAIT = 5; % seconds
 % PROFILING = false;
-% PRIME_MOD = {'confocal'; 'confocal'; 'split_det'; 'avg'};
-% PRIME_LAMBDA = [790; 680; 790; 790];
+% mod_order = {'confocal'; 'confocal'; 'split_det'; 'avg'};
+% lambda_order = [790; 680; 790; 790];
+
 
 %% Inputs
 [root_path, num_workers] = handle_input(varargin);
@@ -35,6 +38,7 @@ cal_path = guessPath(root_path, 'Calibration');
 [date_tag, eye_tag] = getDateAndEye(root_path);
 set(wbh.raw_path_txt, 'string', raw_path);
 set(wbh.cal_path_txt, 'string', cal_path);
+
 
 %% Set up parallel pool
 do_par = true;
@@ -62,8 +66,12 @@ wbh.dsin_uit = updateUIT(wbh.dsin_uit, dsins);
 
 %% Get ARFS information
 % todo: make optional
+% todo: clean up
 u_mods = unique(mod_order);
-search = subdir('pcc_thresholds.txt');
+current_path = fullfile(mfilename('fullpath'));
+parent_path = dir(fullfile(current_path, '..'));
+search_path = parent_path(1).folder;
+search = subdir(fullfile(search_path, 'pcc_thresholds.txt'));
 if numel(search) == 1
     pcc_thrs = getPccThr(search.name, u_mods);
 else
@@ -114,23 +122,25 @@ while ~video_found || ...
 %     aviSets = getFOV(raw_path, aviSets);
 %     aviSets = getWavelength(aviSets);
 %     
-    %% Try to create secondaries for all current aviSets without split
-    direct_fnames = cell(size(aviSets));
-    remove = false(size(aviSets));
-    for ii=1:numel(aviSets)
-        if any(contains(aviSets(ii).fnames, {'split_det'; 'avg'})) || ...
-                ~any(contains(aviSets(ii).fnames, 'direct')) || ...
-                ~any(contains(aviSets(ii).fnames, 'reflect'))
-            remove(ii) = true;
-        else
-            direct_fnames{ii} = aviSets(ii).fnames{...
-                contains(aviSets(ii).fnames, 'direct')};
-        end
-    end
-    direct_fnames(remove) = [];
-    
-    % Create split and avg
-    par_create_mods(raw_path, direct_fnames, do_par);
+
+    % Move to video loop
+%     %% Try to create secondaries for all current aviSets without split
+%     direct_fnames = cell(size(aviSets));
+%     remove = false(size(aviSets));
+%     for ii=1:numel(aviSets)
+%         if any(contains(aviSets(ii).fnames, {'split_det'; 'avg'})) || ...
+%                 ~any(contains(aviSets(ii).fnames, 'direct')) || ...
+%                 ~any(contains(aviSets(ii).fnames, 'reflect'))
+%             remove(ii) = true;
+%         else
+%             direct_fnames{ii} = aviSets(ii).fnames{...
+%                 contains(aviSets(ii).fnames, 'direct')};
+%         end
+%     end
+%     direct_fnames(remove) = [];
+%     
+%     % Create split and avg
+%     par_create_mods(raw_path, direct_fnames, do_par);
     aviSets = updateAviSets(aviSets, raw_path);
     
     % Remove videos that don't need to be processed
@@ -138,9 +148,9 @@ while ~video_found || ...
     
     %% Build proc_queue
     for ii=1:numel(aviSets)
-        if ~any(contains(proc_queue, aviSets(ii).num)) && ...
-                any(contains(aviSets(ii).mods, 'split_det')) && ...
-                any(contains(aviSets(ii).mods, 'avg'))
+        if ~any(contains(proc_queue, aviSets(ii).num)) %&& ...
+                %any(contains(aviSets(ii).mods, 'split_det')) && ...
+                %any(contains(aviSets(ii).mods, 'avg'))
             proc_queue = [proc_queue; {aviSets(ii).num}]; %#ok<*AGROW>
         end
     end
@@ -169,7 +179,7 @@ while ~video_found || ...
                     root_path, raw_path, ...
                     this_aviSet, dsins, mod_order, lambda_order, pcc_thrs, true);
             else
-                feval(@regAvg, ini, root_path, raw_path, ...
+                regAvg(ini, root_path, raw_path, ...
                     this_aviSet, dsins, mod_order, lambda_order, pcc_thrs, true);
             end
             
@@ -225,7 +235,7 @@ deployUCL_AM(py3, img_path, pos_ffname{1}, eye_tag, out_path);
 % todo: functionalize
 jsx_search = dir(fullfile(out_path, '*.jsx'));
 montages = parseJSX(fullfile(out_path, jsx_search.name));
-quickDisplayMontage(montages);
+% quickDisplayMontage(montages);
 overwrite = false;
 
 %% Targeted approach
@@ -293,21 +303,21 @@ end
 % todo: Last ditch effort to connect disjoints, process remaining best
 % frames from each video. Try other modalities as well?
 
-if all(disjoint_fixed)
+if exist('disjoint_fixed', 'var') ~= 0 && any(disjoint_fixed(2:end))
     deployUCL_AM(py3, img_path, pos_ffname{1}, eye_tag, out_path);
-    jsx_search = dir(fullfile(out_path, '*.jsx'));
-    montages = parseJSX(fullfile(out_path, jsx_search.name));
-    quickDisplayMontage(montages);
+%     jsx_search = dir(fullfile(out_path, '*.jsx'));
+%     montages = parseJSX(fullfile(out_path, jsx_search.name));
+%     quickDisplayMontage(montages);
 end
 
 %% Montage those guys
-ps = getIniPath(ini, 'Adobe Photoshop');
-runAllJsx(ps, out_path)
+% ps = getIniPath(ini, 'Adobe Photoshop');
+% runAllJsx(ps, out_path)
 
 %% Output aligned images for use in whole-montage spacing assessment
-aligned_tif_path = uigetdir(out_path, ...
-    'Select directory containing aligned images');
-fx_montage_dft_analysis(aligned_tif_path, mod_order{1}, lambda_order(1), do_par);
+% aligned_tif_path = uigetdir(out_path, ...
+%     'Select directory containing aligned images');
+% fx_montage_dft_analysis(aligned_tif_path, mod_order{1}, lambda_order(1), do_par);
 
 %% Done
 % Any final reports could go here

@@ -30,6 +30,11 @@ if dy > abs(dy-size(d,1))
     dy = dy-size(d,1);
 end
 
+if isa(d, 'gpuArray')
+    dx = gather(dx);
+    dy = gather(dy);
+end
+
 tform = eye(3);
 tform(3,1:2) = [dx,dy];
 tform = affine2d(tform);
