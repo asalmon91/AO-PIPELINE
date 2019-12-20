@@ -28,6 +28,10 @@ WAIT = 5; % seconds
 %% Inputs
 [root_path, num_workers] = handle_input(varargin);
 [mod_order, lambda_order] = getModLambdaOrder();
+% TODO: Create new GUI for system options: should include modality,
+% wavelength, grid spacing
+
+
 [wbf, wbh] = pipe_progress();
 set(wbh.root_path_txt, 'string', root_path);
 
@@ -68,39 +72,27 @@ else
 end
 
 %% Update LIVE state
-updateLIVE(paths
-
-% todo: find a better way to signal the session is complete
-session_complete = is_session_done(root_path);
-done_processing = false; % todo: replace with function that checks for live .mat file
+live_data = updateLIVE(paths);
 
 %% LIVE LOOP
-while ~session_complete && ~done_processing
-    
-    
+while ~live_data.done
     %% Calibration Loop
     % Update cal_queue
-    % Parfeval
-    
-    dsins = [];
-    while isempty(dsins)
-        dsins = createDsin(cal_path);
-
-        if isempty(dsins)
-            warning('No grid videos found in %s\n', cal_path);
-            warning('Files must contain "horz..." and "vert..."\n');
-            pause(WAIT);
-        end
-    end
-    
-    % Update progress
-    wbh.dsin_uit = updateUIT(wbh.dsin_uit, dsins);
+    % parfeval(@getDsin, )
+    % Check cal status
+    % wbh.dsin_uit = updateUIT(wbh.dsin_uit, dsins);
     
     %% Registration/Averaging
-    
+    % Update vid queue
+    % parfeval(@ra, )
+    % Check ra status
+    % Update progress
     
     %% Montaging
-    
+    % Update mon queue
+    % parfeval(@montage, )
+    % Check montage status
+    % Update progress
     
     
     %% Update list of videos
@@ -192,18 +184,10 @@ while ~session_complete && ~done_processing
         end
     end
     
-    
-    
-    %% Update progress window
-    wbh.vid_uit = updateUIT(wbh.vid_uit, aviSets, raw_path);
-    
     %% Update State
-    session_complete = exist(fullfile(root_path, 'done.txt'), 'file') ~= 0;
-    
-    
-    % Wait some time before looking for more videos
+    live_data = updateLIVE(paths);
+    wbh.vid_uit = updateUIT(wbh.vid_uit, aviSets, raw_path);
     pause(WAIT);
-    
 end
 % End LIVE LOOP
 
@@ -339,6 +323,7 @@ close(wbf);
 
 
 end
+
 
 function [root_path, num_workers] = handle_input(usr_input)
 

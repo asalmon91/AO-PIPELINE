@@ -15,6 +15,7 @@ path_parts = strsplit(function_full_path, filesep);
 function_root = strjoin(path_parts(1:end-1), filesep);
 addpath(genpath(function_root));
 
+
 %% Parse inputs
 parseinputs(varargin)
 global TRACK_MOTION;

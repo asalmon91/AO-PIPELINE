@@ -7,15 +7,27 @@ SCAN_TAG    = 'optical_scanners_settings';
 FOV_TAG     = 'resonant_scanner_amplitude_in_deg';
 
 %% Allow header_ffnames to be char array or cell array
-if ~isa(header_ffnames, 'cell')
+if ~iscell(header_ffnames)
     header_ffnames = {header_ffnames};
+end
+
+% Throw error if file type is not .mat
+[~,names,exts] = cellfun(@fileparts, header_ffnames, 'uniformoutput', false);
+if ~all(strcmpi(exts, '.mat'))
+    error('Invalid file type, must be .mat')
 end
 
 %% Load data
 fov = zeros(size(header_ffnames));
 for ii=1:numel(header_ffnames)
-    load(header_ffnames{ii}, SCAN_TAG);
-    fov(ii) = eval(sprintf('%s.%s', SCAN_TAG, FOV_TAG));
+    meta_data = load(header_ffnames{ii});
+    if isfield(meta_data, SCAN_TAG) % AOSLO video header
+        fov(ii) = eval(sprintf('meta_data.%s.%s', SCAN_TAG, FOV_TAG));
+    else % Try to extract from file name
+        name_parts  = strsplit(names{ii}, '_');
+        fov_token   = name_parts{find(strcmpi(name_parts, 'deg'))-1};
+        fov(ii)     = str2double(strrep(fov_token, 'p', '.'));
+    end
 end
 
 end

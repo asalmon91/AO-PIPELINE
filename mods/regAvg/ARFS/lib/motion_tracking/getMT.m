@@ -30,6 +30,9 @@ for ii=1:numel(fix_id)
     end
     
     % Update PCC and coordinates
+    if isa(pcorr, 'gpuArray')
+        pcorr = gather(pcorr);
+    end
     data = updatePCC(data, fix_id(ii), mov_id(ii), pcorr);
     fprintf('PCC=%1.3f\n', pcorr);
 
