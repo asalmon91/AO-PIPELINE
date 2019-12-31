@@ -9,7 +9,7 @@ function vid_set = getAviSets(in_path)
 N_PAD = 4;
 AOSLO_VID_EXPR = sprintf('%s%s%s', ...
     '[\w]+[_]', repmat('\d', 1, N_PAD), '[.]avi');
-% Exclue leading characters
+% Exclude leading characters
 VID_NUM_EXP = sprintf('%s%s%s', ...
     '[_]', repmat('\d', 1, N_PAD), '[.]avi');
 

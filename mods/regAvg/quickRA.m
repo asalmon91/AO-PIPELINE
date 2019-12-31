@@ -3,33 +3,49 @@ function [outputArg1,outputArg2] = quickRA(vid_data, cal_data, opts)
 %   Detailed explanation goes here
 
 % Raw path
-in_path = '\\141.106.183.144\animal_longterm\Squirrel\__Subjects\DM_154802\AOSLO\2019_08_04_OS\Raw';
+in_path = 'C:\Users\DevLab_811\workspace\pipe_test\DM_154802\AOSLO\2019_08_04_OS\Raw';
 
 % Calibration path
-in_cal_path = '\\141.106.183.144\animal_longterm\Squirrel\__Subjects\DM_154802\AOSLO\2019_08_04_OS\Calibration';
-in_cal_fname = 'desinusoid_matrix_790nm_2p00_deg_118p1_lpmm_fringe_6p4006_pix.mat';
-dsin_data = load(fullfile(in_cal_path, in_cal_fname));
-dsin_mat = single(gpuArray(dsin_data.vertical_fringes_desinusoid_matrix));
+in_cal_path = strrep(in_path, 'Raw', 'Calibration');
+
+cal_dir = dir(fullfile(in_cal_path, 'desinusoid_matrix*.mat'));
+cal_fovs = getFOV(fullfile(in_cal_path, {cal_dir.name}'));
+dsin_lut(numel(cal_dir)).fov = cal_fovs(end);
+for ii=1:numel(cal_dir)
+    dsin_data = load(fullfile(in_cal_path, cal_dir(ii).name));
+    dsin_lut(ii).fov = cal_fovs(ii);
+    dsin_lut(ii).dsin_mat = single(gpuArray(...
+        dsin_data.vertical_fringes_desinusoid_matrix));
+end
+clear dsin_data;
 
 % Output path
-out_path = '\\141.106.183.144\animal_longterm\Squirrel\__Subjects\DM_154802\AOSLO\2019_08_04_OS\Processed\LIVE';
+out_path = strrep(in_path, 'Raw', fullfile('Processed', 'LIVE'));
 if exist(out_path, 'dir') == 0
     mkdir(out_path)
 end
 
 % Use confocal as primary modality for this test
 confocal_dir = dir(fullfile(in_path, '*confocal*.avi'));
+mat_ffnames = strrep({confocal_dir.name}', '.avi', '.mat');
+fovs = getFOV(fullfile(in_path, mat_ffnames));
+
+% tic
+% parpool(2);
+% toc
 tic
 for zz=1:numel(confocal_dir)
-    in_fname = confocal_dir{zz};
+    in_fname = confocal_dir(zz).name;
     sec_fnames = {...
         strrep(in_fname, 'confocal', 'direct'), ...
         strrep(in_fname, 'confocal', 'reflect')};
-    % in_mat_fname = strrep(in_fname, '.avi', '.mat');
-
+    
     % Read confocal
     vid = fn_read_AVI(fullfile(in_path, in_fname));
     vid = single(gpuArray(vid));
+    
+    % Determine appropriate dsin mat to use
+    dsin_mat = dsin_lut(fovs(zz) == [dsin_lut.fov]).dsin_mat;
 
     %todo: Make function apply dsin
     dsin_vid = gpuArray(zeros(size(vid,1), size(dsin_mat, 1), ...
@@ -37,7 +53,7 @@ for zz=1:numel(confocal_dir)
     for ii=1:size(vid, 3)
         dsin_vid(:,:,ii) = vid(:,:,ii) * dsin_mat';
     end
-    vid = dsin_vid; clear dsin_vid;
+    vid = dsin_vid; %clear dsin_vid;
 
     % Select reference frames
     frames = arfs(vid);
@@ -60,7 +76,7 @@ for zz=1:numel(confocal_dir)
         for dd=1:size(vid, 3)
             dsin_vid(:,:,dd) = vid(:,:,dd) * dsin_mat';
         end
-        vid = dsin_vid; clear dsin_vid;
+        vid = dsin_vid; %clear dsin_vid;
 
         for jj=1:numel(fids)
             for kk=1:numel(fids(jj).cluster)
@@ -91,8 +107,6 @@ for zz=1:numel(confocal_dir)
     outputFFR_imgs(avg_imgs, fids, out_path, avg_fname);
 end
 toc
-
-
 
 
 

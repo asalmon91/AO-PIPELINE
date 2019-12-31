@@ -1,0 +1,50 @@
+classdef vidset
+    %vidset is a set of simultaneously acquired AOSLO videos
+    
+    properties
+        vidnum {mustBeNumeric, mustBeNonnegative, mustBeFinite, isscalar};
+        fov {mustBeNumeric, mustBePositive, mustBeFinite, isscalar};
+        vids aovid;
+    end
+    
+    methods
+        function obj = vidset(vidnum, fov)
+            %vidset Construct an instance of this class
+            if nargin >= 1
+                obj.vidnum = vidnum;
+            end
+            if nargin == 2
+                obj.fov = fov;
+            end
+        end
+        
+        function vidNumStr = getVidNumStr(obj)
+            %getVidNumStr Converts numeric video number to 0-padded string
+            vidNumStr = pad(num2str(obj.vidnum), 4, 'left', '0');
+        end
+        
+        function obj = addVids(obj, filenames)
+            %addVids adds an aovid object array to the vidset
+            if ~iscell(filenames) %todo: check if char as well
+                filenames = {filenames};
+            end
+            aovids(numel(filenames)) = aovid;
+            for ii=1:numel(filenames)
+                aovids(ii) = aovid(filenames{ii});
+            end
+            obj.vids = aovids;
+        end
+        
+        function obj = updateVideoNumber(obj)
+            if ~isempty(obj.vids)
+                % Use first file name to extract video number
+                fname = obj.vids(1).filename;
+                nameparts = strsplit(fname, '.');
+                nameparts = strsplit(nameparts{1}, '_');
+                vidNumStr = nameparts{end};
+                obj.vidnum = str2double(vidNumStr);
+            end
+        end
+    end
+end
+

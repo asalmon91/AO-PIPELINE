@@ -2,7 +2,7 @@ function live_data = updateLIVE(paths, live_data)
 %updateLIVE checks for new data
 
 %% Constants
-LIVE_FNAME = 'PIPE_LIVE.mat';
+LIVE_FNAME = 'AO_PIPE_LIVE.mat';
 
 %% Check for existing database
 if (exist('live_data', 'var') == 0 || isempty(live_data)) && ...
