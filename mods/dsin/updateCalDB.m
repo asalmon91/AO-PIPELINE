@@ -1,32 +1,35 @@
-function live_data = updateCalDB(live_data)
+function ld = updateCalDB(ld, paths)
 %updateCalDB updates the calibration database
 
-cal_vid_dir = dir(fullfile(paths.cal, '*.avi'));
+%% Constants
+VID_EXT = '.avi';
+HEAD_EXT = '.mat';
+DSIN_MAT_EXPR = 'desinusoid_matrix*.mat';
 
+%% Check directory for videos and headers
+cal_vid_dir = dir(fullfile(paths.cal, ['*', VID_EXT]));
 avi_fnames = {cal_vid_dir.name}';
-mat_fnames = strrep(avi_fnames, '.avi', '.mat');
+mat_fnames = strrep(avi_fnames, VID_EXT, HEAD_EXT);
 
 % Check to see if video or header has been overwritten
 % If nothing is new, we can return
-if ~isempty(live_data)
-    
-    
-    
-    
+if isempty(ld.cal)
+    ld.cal.dsin = [];
+else
+    % todo
 end
 
-% Get FOV, wavelength & orientation
+% Get FOV, wavelength, & orientation
 fovs = getFOV(fullfile(paths.cal, mat_fnames));
 wavelengths = getWavelength(mat_fnames);
 orientations = getOrientation(mat_fnames);
 horz = strcmp(orientations, 'horz');
 vert = strcmp(orientations, 'vert');
 
+% TODO
 % Check that there is only one video for each combination of fov,
 % wavelength, and orientation. If there is redundancy, warn user and use
 % newest version of that combination
-
-
 
 %% Combine FOV & wavelength for horz videos, find matching vert videos
 % todo: make this section the new pairHorzVert function
@@ -44,7 +47,7 @@ end
 v_avi_fnames = v_avi_fnames(order);
 
 % Construct grid pair structure
-gridPairs(numel(h_avi_fnames)).fov = h_fovs(1);
+gridPairs(numel(h_avi_fnames), 1).fov = h_fovs(1);
 for ii=1:numel(h_avi_fnames)
     gridPairs(ii).fov       = h_fovs(ii);
     gridPairs(ii).wl_nm     = h_wls(ii);
@@ -53,7 +56,7 @@ for ii=1:numel(h_avi_fnames)
 end
 
 %% Check for existing desinusoid matrices
-cal_dsin_dir = dir(fullfile(paths.cal, 'desinusoid_matrix*.mat'));
+cal_dsin_dir = dir(fullfile(paths.cal, DSIN_MAT_EXPR));
 dsin_fovs = [];
 dsin_wavelengths = [];
 if ~isempty(cal_dsin_dir)
@@ -73,20 +76,17 @@ for ii=1:numel(gridPairs)
 end
 gridPairs(~needs_dsin) = [];
 
-%% Add relevant data to live_data structure
-for ii=1:numel(cal_vid_dir)
-    
-    
-    
+%% Construct new desinusoid objects
+new_dsin = repmat(dsin, numel(gridPairs), 1);
+for ii=1:numel(new_dsin)
+    new_dsin(ii).fov = gridPairs(ii).fov;
+    new_dsin(ii).wavelength = gridPairs(ii).wl_nm;
+    new_dsin(ii).h_filename = gridPairs(ii).h_fname;
+    new_dsin(ii).v_filename = gridPairs(ii).v_fname;
 end
-% live_data.calDB = 
 
-
-
-
-
-
-
+%% Add relevant data to live_data structure
+ld.cal.dsin = vertcat(ld.cal.dsin, new_dsin);
 
 end
 

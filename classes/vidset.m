@@ -5,6 +5,9 @@ classdef vidset
         vidnum {mustBeNumeric, mustBeNonnegative, mustBeFinite, isscalar};
         fov {mustBeNumeric, mustBePositive, mustBeFinite, isscalar};
         vids aovid;
+        processing logical = false;
+        processed logical = false;
+        hasCal logical = false;
     end
     
     methods
@@ -43,6 +46,14 @@ classdef vidset
                 nameparts = strsplit(nameparts{1}, '_');
                 vidNumStr = nameparts{end};
                 obj.vidnum = str2double(vidNumStr);
+            end
+        end
+        
+        function fnames = getAllFnames(obj)
+            % Returns a cell array of all filenames in the vids property
+            fnames = cell(numel(obj.vids), 1);
+            for ii=1:numel(fnames)
+                fnames{ii} = obj.vids(ii).filename;
             end
         end
     end

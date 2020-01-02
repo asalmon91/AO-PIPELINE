@@ -15,21 +15,24 @@ else
 end
 
 %% Update calibration database
-live_data = updateCalDB(live_data);
+live_data = updateCalDB(live_data, paths);
 
 %% Update video database
-live_data = updateVidDB(live_data);
+live_data = updateVidDB(live_data, paths);
 
 %% Update montage database
-live_data = updateMontageDB(live_data);
+% live_data = updateMontageDB(live_data);
 
 % Update session completion
 if ~live_data.done
     live_data.done = is_session_done(paths.root);
-    % TODO: Session is only done is done.txt exists, all videos in raw have
-    % gone through r/a and successful images have been placed in the
-    % montage
+    % TODO: GUI will include a button which tells the system that
+    % acquisition is done
 end
+
+%% Save current progress to disk
+save(fullfile(paths.root, LIVE_FNAME), 'live_data');
+
 
 end
 
