@@ -24,8 +24,6 @@ if exist(paths.out, 'dir') == 0
 end
 
 % todo: extract mod_order from opts
-% Use confocal as primary modality for this test
-tic
 fnames = this_vidset.getAllFnames();
 prime_fname = fnames{contains(fnames, 'confocal')};
 sec_fnames = {...
@@ -46,7 +44,10 @@ dsin_vid = gpuArray(zeros(size(vid,1), size(dsin_mat, 1), ...
 for ii=1:size(vid, 3)
     dsin_vid(:,:,ii) = vid(:,:,ii) * dsin_mat';
 end
-vid = dsin_vid; %clear dsin_vid;
+vid = dsin_vid; clear dsin_vid;
+
+% Determine appropriate PCC threshold to use for ARFS
+% TODO
 
 % Select reference frames
 frames = arfs(vid);
@@ -98,7 +99,6 @@ split_fname = strrep(prime_fname, 'confocal', 'split_det');
 avg_fname = strrep(prime_fname, 'confocal', 'avg');
 outputFFR_imgs(split_imgs, fids, out, split_fname);
 outputFFR_imgs(avg_imgs, fids, out, avg_fname);
-toc
 
 
 

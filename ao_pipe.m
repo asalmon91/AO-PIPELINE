@@ -29,12 +29,13 @@ ini = checkFirstRun();
 %% Inputs
 [root_path, num_workers] = handle_input(varargin);
 [mod_order, lambda_order] = getModLambdaOrder();
+u_mods = unique(mod_order);
 % TODO: Create new GUI for system options: should include modality,
 % wavelength, grid spacing
 sys_opts.lpmm = 3000/25.4; % lines per mm spacing in grids
 sys_opts.n_frames = 5; % # frames to average
 
-%% Progress tracking and visualization
+%% Progress tracking and monitoring live montage
 [wbf, wbh] = pipe_progress();
 set(wbh.root_path_txt, 'string', root_path);
 
@@ -45,23 +46,20 @@ paths = initPaths(root_path);
 set(wbh.raw_path_txt, 'string', paths.raw);
 set(wbh.cal_path_txt, 'string', paths.cal);
 
-%% Get ARFS information
-% todo: make optional
-% todo: clean up
-u_mods = unique(mod_order);
-current_path = fullfile(mfilename('fullpath'));
-parent_path = dir(fullfile(current_path, '..'));
-search_path = parent_path(1).folder;
-search = subdir(fullfile(search_path, 'pcc_thresholds.txt'));
-if numel(search) == 1
-    pcc_thrs = getPccThr(search.name, u_mods);
-else
-    warning('PCC thresholds not found for ARFS, using defaults');
-    pcc_thrs = [0.02; 0.01; 0.01];
-end
-
 %% Update LIVE state
 live_data = updateLIVE(paths);
+
+%% Get ARFS information
+if ~isfield(live_data.vid, 'arfs_opts') || isempty(live_data.vid.arfs_opts)
+    search = subdir('pcc_thresholds.txt');
+    if numel(search) == 1
+        live_data.vid.arfs_opts.pcc_thrs = getPccThr(search.name, u_mods);
+    else
+        warning('PCC thresholds not found for ARFS, using defaults');
+        live_data.vid.arfs_opts.pcc_thrs = [0.02; 0.01; 0.01];
+    end
+end
+
 
 %% Set up parallel pool
 do_par = true;
@@ -81,21 +79,27 @@ end
 %% LIVE LOOP
 while ~live_data.done
     %% Calibration Loop
-    pff_cal = parfeval(current_pool, @getCal, 1, ...
-        paths.cal, live_data.cal, sys_opts);
+    % Determine next 
+    this_dsin = getNextDsin(live_data.cal);
+    pff_cal = parfeval(current_pool, @this_dsin.construct_dsin_mat, 1, ...
+        paths.cal, this_dsin, sys_opts);
     if strcmp(pff_cal.state, 'finished')
         
     end
     
     %% Registration/Averaging
     pff_vid = parfeval(current_pool, @quickRA, 1, ...
-        paths, live_data, sys_opts)
-    % Check ra status
+        paths, live_data, sys_opts);
+    if strcmp(pff_vid.state, 'finished')
+        
+    end
     % Update progress
     
     %% Montaging
-    pff_mon = parfeval(current_pool, @montage)
-    % Check montage status
+    pff_mon = parfeval(current_pool, @montage);
+    if strcmp(pff_mon.state, 'finished')
+        
+    end
     % Update progress
     
     %% Update live database

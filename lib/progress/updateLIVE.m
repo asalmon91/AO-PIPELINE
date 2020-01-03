@@ -15,13 +15,16 @@ else
 end
 
 %% Update calibration database
+fprintf('Updating calibration data...\n');
 live_data = updateCalDB(live_data, paths);
 
 %% Update video database
+fprintf('Updating video data...\n');
 live_data = updateVidDB(live_data, paths);
 
 %% Update montage database
-% live_data = updateMontageDB(live_data);
+fprintf('Updating montage data...\n');
+live_data = updateMontageDB(live_data, paths);
 
 % Update session completion
 if ~live_data.done

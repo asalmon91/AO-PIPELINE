@@ -8,7 +8,9 @@ read_loc_file = false;
 if isempty(ld.mon) || ~isfield(ld.mon, 'loc_file') || isempty(ld.mon.loc_file)
     % Find if not already loaded
     ld.mon.loc_file = find_AO_location_file(paths.root);
-    read_loc_file = true;
+    if ~isempty(ld.mon.loc_file)
+        read_loc_file = true;
+    end
 else
     % Check for updates
     file_info = dir(ld.mon.loc_file.name);
