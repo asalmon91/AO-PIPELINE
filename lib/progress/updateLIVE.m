@@ -1,4 +1,4 @@
-function live_data = updateLIVE(paths, live_data)
+function live_data = updateLIVE(paths, live_data, opts)
 %updateLIVE checks for new data
 
 %% Constants
@@ -9,21 +9,21 @@ if (exist('live_data', 'var') == 0 || isempty(live_data)) && ...
         exist(fullfile(paths.root, LIVE_FNAME), 'file') ~= 0
     % First call and running on a previously run dataset
     load(fullfile(paths.root, LIVE_FNAME), 'live_data');
-else
+elseif exist('live_data', 'var') == 0 || isempty(live_data)
     % Initialize live structure
     live_data = init_live_data();
 end
 
 %% Update calibration database
-fprintf('Updating calibration data...\n');
-live_data = updateCalDB(live_data, paths);
+% fprintf('Updating calibration data...\n');
+live_data = updateCalDB(live_data, paths, opts);
 
 %% Update video database
-fprintf('Updating video data...\n');
+% fprintf('Updating video data...\n');
 live_data = updateVidDB(live_data, paths);
 
 %% Update montage database
-fprintf('Updating montage data...\n');
+% fprintf('Updating montage data...\n');
 live_data = updateMontageDB(live_data, paths);
 
 % Update session completion
@@ -34,7 +34,7 @@ if ~live_data.done
 end
 
 %% Save current progress to disk
-save(fullfile(paths.root, LIVE_FNAME), 'live_data');
+% save(fullfile(paths.root, LIVE_FNAME), 'live_data');
 
 
 end

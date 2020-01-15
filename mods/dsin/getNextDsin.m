@@ -1,8 +1,8 @@
-function next_dsin = getNextDsin(cal_data)
+function dsin_idx = getNextDsin(cal_data)
 %getNextDsin Finds the next desinusoid object that is ready for processing
 
 % Return empty by default
-next_dsin = [];
+dsin_idx    = [];
 
 % Determine the first one in the database that is ready for processing
 for ii=1:numel(cal_data.dsin)
@@ -11,7 +11,7 @@ for ii=1:numel(cal_data.dsin)
             ~isempty(cal_data.dsin(ii).v_filename) && ...
             ~isempty(cal_data.dsin(ii).fov) && ...
             ~isempty(cal_data.dsin(ii).wavelength)
-        next_dsin = cal_data.dsin(ii);
+        dsin_idx = ii;
         break;
     end
 end

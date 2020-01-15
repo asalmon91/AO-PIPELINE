@@ -16,7 +16,7 @@ addpath(genpath('lib'));
 
 
 %% Installation
-ini = checkFirstRun();
+% ini = checkFirstRun();
 
 
 %% Constants
@@ -29,34 +29,43 @@ ini = checkFirstRun();
 %% Inputs
 [root_path, num_workers] = handle_input(varargin);
 [mod_order, lambda_order] = getModLambdaOrder();
-u_mods = unique(mod_order);
 % TODO: Create new GUI for system options: should include modality,
 % wavelength, grid spacing
 sys_opts.lpmm = 3000/25.4; % lines per mm spacing in grids
-sys_opts.n_frames = 5; % # frames to average
+sys_opts.n_frames = 3; % # frames to average
+sys_opts.mod_order = mod_order;
+sys_opts.lambda_order = lambda_order;
 
 %% Progress tracking and monitoring live montage
-[wbf, wbh] = pipe_progress();
-set(wbh.root_path_txt, 'string', root_path);
-
+% [wbf, wbh] = pipe_progress();
+% set(wbh.root_path_txt, 'string', root_path);
 
 %% Infer file locations
 paths = initPaths(root_path);
-[date_tag, eye_tag] = getDateAndEye(paths.root);
-set(wbh.raw_path_txt, 'string', paths.raw);
-set(wbh.cal_path_txt, 'string', paths.cal);
+% set(wbh.raw_path_txt, 'string', paths.raw);
+% set(wbh.cal_path_txt, 'string', paths.cal);
+
+%% Create output path
+if ~isfield(paths, 'out') || isempty(paths.out)
+    paths.out = fullfile(paths.pro, 'LIVE');
+    if exist(paths.out, 'dir') == 0
+        mkdir(paths.out)
+    end
+end
 
 %% Update LIVE state
-live_data = updateLIVE(paths);
+live_data = updateLIVE(paths, [], sys_opts);
+[live_data.date, live_data.eye] = getDateAndEye(paths.root);
 
 %% Get ARFS information
 if ~isfield(live_data.vid, 'arfs_opts') || isempty(live_data.vid.arfs_opts)
     search = subdir('pcc_thresholds.txt');
     if numel(search) == 1
-        live_data.vid.arfs_opts.pcc_thrs = getPccThr(search.name, u_mods);
+        live_data.vid.arfs_opts.pcc_thrs = ...
+            getPccThr(search.name, mod_order);
     else
         warning('PCC thresholds not found for ARFS, using defaults');
-        live_data.vid.arfs_opts.pcc_thrs = [0.02; 0.01; 0.01];
+        live_data.vid.arfs_opts.pcc_thrs = ones(size(mod_order)).*0.01;
     end
 end
 
@@ -65,45 +74,46 @@ end
 do_par = true;
 if num_workers > 1 && exist('parfor', 'builtin') ~= 0
     delete(gcp('nocreate'))
-    current_pool = parpool(num_workers, 'IdleTimeout', 120);
+    cpool = parpool(num_workers, 'IdleTimeout', 120);
 else
     do_par = false;
 end
 
 %% Set up queues
-[pff_cal, q_c, pff_vid, q_v, pff_mon, q_m] = initQueues(num_workers);
+[pff_cal, q_c, pff_vid, q_v, pff_mon, q_m] = initQueues();
 % afterEach(q_c, @(x) updateUIT(x, 'cal'));
 % afterEach(q_v, @(x) updateUIT(x, 'vid'));
 % afterEach(q_m, @(x) updateUIT(x, 'mon'));
 
+% while ~live_data.done
+%     %% Calibration Loop
+%     [live_data, pff_cal] = calibrate_LIVE(live_data, ...
+%         paths, pff_cal, cpool);
+%     
+%     if exist(fullfile(paths.root, 'done.txt'), 'file') ~= 0
+%         live_data.done = true;
+%     else
+%         live_data = updateLIVE(paths, live_data, sys_opts);
+%     end
+% end
+
+
 %% LIVE LOOP
 while ~live_data.done
     %% Calibration Loop
-    % Determine next 
-    this_dsin = getNextDsin(live_data.cal);
-    pff_cal = parfeval(current_pool, @this_dsin.construct_dsin_mat, 1, ...
-        paths.cal, this_dsin, sys_opts);
-    if strcmp(pff_cal.state, 'finished')
-        
-    end
+    [live_data, pff_cal] = calibrate_LIVE(live_data, paths, pff_cal, cpool);
+    checkFutureError(pff_cal)
     
     %% Registration/Averaging
-    pff_vid = parfeval(current_pool, @quickRA, 1, ...
-        paths, live_data, sys_opts);
-    if strcmp(pff_vid.state, 'finished')
-        
-    end
-    % Update progress
+    [live_data, pff_vid] = ra_LIVE(live_data, paths, sys_opts, pff_vid, cpool);
+    checkFutureError(pff_cal)
     
     %% Montaging
-    pff_mon = parfeval(current_pool, @montage);
-    if strcmp(pff_mon.state, 'finished')
-        
-    end
-    % Update progress
+    [live_data, pff_mon] = montage_LIVE(live_data, paths, sys_opts, pff_mon, cpool);
+    checkFutureError(pff_mon)
     
     %% Update live database
-    live_data = updateLIVE(paths, live_data);
+    live_data = updateLIVE(paths, live_data, sys_opts);
 end
 
 %% FULL LOOP

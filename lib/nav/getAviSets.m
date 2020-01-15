@@ -54,7 +54,15 @@ for ii=1:numel(u_vid_nums)
         [u_vid_nums{ii}, '.avi']));
 end
 
-
+for ii=1:numel(vid_set)
+    for jj=1:numel(vid_set(ii).fnames)
+        header_fname = strrep(vid_set(ii).fnames{jj}, '.avi', '.mat');
+        if exist(fullfile(in_path, header_fname), 'file') ~= 0
+            vid_set(ii).fov = getFOV(fullfile(in_path, header_fname));
+            break;
+        end
+    end
+end
 
 
 

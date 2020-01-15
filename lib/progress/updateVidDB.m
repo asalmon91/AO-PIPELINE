@@ -7,6 +7,18 @@ function ld = updateVidDB(ld, paths)
 VID_EXT = '*.avi';
 HEAD_EXT = '*.mat';
 
+%% Check if vidsets have a compatible calibration file
+if ~isempty(ld.vid) && isfield(ld.vid, 'vid_set') && ~isempty(ld.vid.vid_set) && ...
+        ~isempty(ld.cal) && isfield(ld.cal, 'dsin') && ~isempty(ld.cal.dsin)
+    for ii=1:numel(ld.vid.vid_set)
+        if ~ld.vid.vid_set(ii).hasCal
+            ld.vid.vid_set(ii).hasCal = any( ...
+                ld.vid.vid_set(ii).fov == [ld.cal.dsin.fov]' & ...
+                [ld.cal.dsin.processed]');
+        end
+    end
+end
+
 %% Check video folder
 vid_search = dir(fullfile(paths.raw, VID_EXT));
 if isempty(vid_search)
@@ -20,9 +32,17 @@ if isempty(ld.vid) || ~isfield(ld.vid, 'vid_set') || isempty(ld.vid.vid_set)
 else
     %% Filter out videos that have already been added
     % Get a list of all filenames in the database
-	all_vids = [ld.vid.vid_set.vids];
-    all_vids = all_vids(:);
-    all_fnames = {all_vids.filename}';
+	nvids = 0;
+    for ii=1:numel(ld.vid.vid_set)
+        nvids = nvids + numel(ld.vid.vid_set(ii).vids);
+    end
+    all_fnames = cell(nvids, 1);
+    k=1;
+    for ii=1:numel(ld.vid.vid_set)
+        all_fnames(k:k-1+numel(ld.vid.vid_set(ii).vids)) = ...
+            ld.vid.vid_set(ii).getAllFnames();
+        k=k+numel(ld.vid.vid_set(ii).vids);
+    end
     
     % todo: could be more efficient by extracting video number here
     % (probably not necessary)
@@ -65,6 +85,7 @@ for ii=1:numel(vid_nums)
     fov_found = false;
     for jj=1:numel(current_set)
         these_vids(jj) = aovid(current_set(jj).name);
+        these_vids(jj) = updateReady(these_vids(jj), paths.raw);
         
         % Try to determine fov from a video that has a header
         if ~fov_found
@@ -83,11 +104,9 @@ end
 %% Add to live database
 ld.vid.vid_set = vertcat(ld.vid.vid_set, new_vid_set);
 
-%% Check if vidsets have a compatible calibration file
 
 
-
-
+end
 
 
 

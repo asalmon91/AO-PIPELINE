@@ -9,6 +9,7 @@ LATEST_VER = '0.1';
 %% Defaults
 verified = false;
 err_msg = [];
+version_str = [];
 
 %% Read file
 try

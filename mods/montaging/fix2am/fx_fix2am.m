@@ -40,8 +40,8 @@ if strcmpi(penn_ucl, 'Penn') || strcmpi(penn_ucl, 'Both')
     % Construct fringe table
     fringe_tbl = zeros(numel(dsins), 2);
     for ii=1:numel(dsins)
-        fringe_tbl(ii, 1) = dsins(ii).lut.fov;
-        fringe_tbl(ii, 2) = dsins(ii).lut.fringe;
+        fringe_tbl(ii, 1) = dsins(ii).fov;
+        fringe_tbl(ii, 2) = dsins(ii).fringe_px;
     end
     
     % Generate position file data

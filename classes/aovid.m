@@ -3,13 +3,13 @@ classdef aovid
     
     properties
         filename char = '';
-        
         % e.g., confocal, direct, reflect
         modality char = ''; 
-        
         % e.g., 790 [nm]
         wavelength double {mustBePositive, mustBeFinite} = 790;
-        
+        ready logical = [];
+        frames = []; % arfs structure, todo: make this a class
+        fids = []; % arfs structure, includes link ids, cluster ids, frame ids, and output image names
     end
     
     methods
@@ -25,8 +25,8 @@ classdef aovid
                 obj.wavelength = wavelength;
             end
             if nargin == 1
-                obj = obj.updateModality();
-                obj = obj.updateWavelength();
+                obj = updateModality(obj);
+                obj = updateWavelength(obj);
             end
         end
         
@@ -53,6 +53,10 @@ classdef aovid
                 wl_string = obj.filename(wl_start+1:wl_end-1);
                 obj.wavelength = str2double(wl_string);
             end
+        end
+        function obj = updateReady(obj, in_path)
+            %updateReady checks if this video is available for processing
+            obj.ready = isReadable(in_path, obj.filename);
         end
     end
 end

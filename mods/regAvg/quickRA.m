@@ -1,63 +1,52 @@
-function ld = quickRA(paths, ld, opts)
+function this_vidset = quickRA(ld, paths, this_dsin, opts)
 %quickRA is a quick registration and averaging method for AOSLO images
 %   These will be subject to distortion from eye motion, so these are not
-%   meant to be used in 
+%   meant to be used for measurement. This is just to get an idea of the
+%   coverage of retinal area
 
-% todo: move this determination elsewhere so that quickRA can be used more
-% generally
-% Find first vidset in live_data that can be processed
-ready_vids = find(...
-    ~[ld.vid.vid_set.processed] & ...
-    ~[ld.vid.vid_set.processing] & ...
-    [ld.vid.vid_set.hasCal]);
-if isempty(ready_vids)
-    return;
-else
-    this_vidset = ld.vid.vid_set(ready_vids(1));
-    ld.vid.vid_set(ready_vids(1)).processing = true;
-end
+%% Get current vidset for processing
+this_vidset = ld.vid.vid_set(ld.vid.current_idx);
+this_vidset.processing = true;
 
-%% Output path
-paths.out = fullfile(paths.pro, 'LIVE');
-if exist(paths.out, 'dir') == 0
-    mkdir(paths.out)
-end
-
-% todo: extract mod_order from opts
+%% Get primary and secondary modality information
+% todo: importantly, if the scheme we're going with is to not generate
+% split and avg during the live loop, then we can't use either as a
+% primary. In areas of weak confocal signal, this might be a deal-breaker,
+% but it might also be possible to use direct or reflect as a primary. Not
+% sure it's ever been tried. For now, just use confocal. Make sure to
+% confer flexibility to use different wavelengths of confocal
 fnames = this_vidset.getAllFnames();
-prime_fname = fnames{contains(fnames, 'confocal')};
-sec_fnames = {...
-    strrep(prime_fname, 'confocal', 'direct'), ...
-    strrep(prime_fname, 'confocal', 'reflect')};
+primary_mod = contains(fnames, 'confocal');
+primary_wavelength = [this_vidset.vids.wavelength]' == opts.lambda_order(1);
+prime_fname = fnames{primary_mod & primary_wavelength};
+sec_fnames = fnames(~(primary_mod & primary_wavelength));
 
-% Read confocal
+%% Read primary sequence
 vid = fn_read_AVI(fullfile(paths.raw, prime_fname));
 vid = single(gpuArray(vid));
 
-% Determine appropriate dsin mat to use
-cal_fovs = [ld.cal.dsin.fov];
-dsin_mat = ld.cal.dsin(this_vidset.fov == cal_fovs).mat;
-
+%% Desinusoid
 %todo: Make function apply dsin
-dsin_vid = gpuArray(zeros(size(vid,1), size(dsin_mat, 1), ...
+dsin_vid = gpuArray(zeros(size(vid,1), size(this_dsin.mat, 1), ...
     size(vid, 3), 'single'));
 for ii=1:size(vid, 3)
-    dsin_vid(:,:,ii) = vid(:,:,ii) * dsin_mat';
+    dsin_vid(:,:,ii) = vid(:,:,ii) * this_dsin.mat';
 end
 vid = dsin_vid; clear dsin_vid;
 
-% Determine appropriate PCC threshold to use for ARFS
-% TODO
+%% Select reference frames
+frames = arfs(vid, ...
+    'pcc_thr', ld.vid.arfs_opts.pcc_thrs(1), ...
+    'mfpc', opts.n_frames);
+fids = get_best_n_frames_per_cluster(frames, opts.n_frames);
+this_vidset.vids(1).frames = frames;
+this_vidset.vids(1).fids = fids;
 
-% Select reference frames
-frames = arfs(vid);
-fids = get_best_n_frames_per_cluster(frames, 5);
-
-% Full-frame register these frames
+%% Full-frame register these frames
 [ffr_imgs, fids] = quickFFR(vid, fids);
 
-% Write images
-outputFFR_imgs(ffr_imgs, fids, out, prime_fname);
+%% Write images
+prime_out_fnames = outputFFR_imgs(ffr_imgs, fids, paths.out, prime_fname);
 
 % Read secondaries, apply txfms, create other mods, write images
 sec_ffr_imgs = cell(numel(ffr_imgs), 2);
@@ -65,10 +54,10 @@ for ii=1:numel(sec_fnames)
     img_idx = 0;
     vid = single(gpuArray(...
         fn_read_AVI(fullfile(paths.raw, sec_fnames{ii}))));
-    dsin_vid = gpuArray(zeros(size(vid,1), size(dsin_mat, 1), ...
+    dsin_vid = gpuArray(zeros(size(vid,1), size(this_dsin.mat, 1), ...
     size(vid, 3), 'single'));
     for dd=1:size(vid, 3)
-        dsin_vid(:,:,dd) = vid(:,:,dd) * dsin_mat';
+        dsin_vid(:,:,dd) = vid(:,:,dd) * this_dsin.mat';
     end
     vid = dsin_vid; %clear dsin_vid;
 
@@ -96,11 +85,33 @@ for ii=1:size(sec_ffr_imgs,1)
 end
 
 split_fname = strrep(prime_fname, 'confocal', 'split_det');
+if ~strcmp(split_fname, prime_fname)
+    split_out_fnames = outputFFR_imgs(split_imgs, fids, paths.out, split_fname);
+else
+    error('Failed to name split_detector images');
+end
+
 avg_fname = strrep(prime_fname, 'confocal', 'avg');
-outputFFR_imgs(split_imgs, fids, out, split_fname);
-outputFFR_imgs(avg_imgs, fids, out, avg_fname);
+if ~strcmp(avg_fname, prime_fname)
+    avg_out_fnames = outputFFR_imgs(avg_imgs, fids, paths.out, avg_fname);
+else
+    error('Failed to name split_detector images');
+end
 
+%% Add output image file names to database
+k=1;
+for ii=1:numel(fids)
+    for jj=1:numel(fids(ii).cluster)
+        this_vidset.vids(1).fids(ii).cluster(jj).out_fnames = {
+            prime_out_fnames{k};
+            split_out_fnames{k};
+            avg_out_fnames{k}};
+        k=k+1;
+    end
+end
 
-
+%% Done!
+this_vidset.processing = false;
+this_vidset.processed = true;
 
 
