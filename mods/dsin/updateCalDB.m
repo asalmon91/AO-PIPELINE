@@ -75,7 +75,7 @@ for ii=1:numel(ld.cal.dsin)
     wavelengths = [gridPairs.wl_nm]';
     h_fnames    = {gridPairs.h_fname}';
     v_fnames    = {gridPairs.v_fname}';
-    remove = any(...
+    remove(ii) = any(...
         this_dsin.fov == fovs & ...
         this_dsin.wavelength == wavelengths & ...
         strcmp(this_dsin.h_filename, h_fnames) & ...
@@ -91,7 +91,17 @@ if ~isempty(cal_dsin_dir)
     dsin_fovs = getFOV(fullfile(paths.cal, {cal_dsin_dir.name}'));
     dsin_wavelengths = getWavelength({cal_dsin_dir.name}');
 end
-% Add to database
+% Remove the ones that are already in the database
+if ~isempty(ld.cal.dsin)
+    remove = false(size(cal_dsin_dir));
+    for ii=1:numel(cal_dsin_dir)
+        remove(ii) = any(dsin_fovs(ii) == [ld.cal.dsin.fov]' & ...
+            dsin_wavelengths(ii) == [ld.cal.dsin.wavelength]');
+    end
+    cal_dsin_dir(remove) = [];
+end
+
+% Add remaining to database
 new_dsin = repmat(dsin, numel(cal_dsin_dir), 1);
 for ii=1:numel(new_dsin)
     dsin_data = load(fullfile(paths.cal, cal_dsin_dir(ii).name));
@@ -132,11 +142,24 @@ for ii=1:numel(new_dsin)
     new_dsin(ii).lpmm       = opts.lpmm;
 end
 
-%% Load from existing desinusoid matrices if they're not already
-% todo
-
 %% Add relevant data to live_data structure
 ld.cal.dsin = vertcat(ld.cal.dsin, new_dsin);
 
+%% There must be some bug that is duplicating dsins, until it's squished,
+% go through the database and remove any redundant dsins
+% duplicates = false(size(ld.cal.dsin));
+% for ii=1:numel(ld.cal.dsin)
+%     for jj=1:numel(ld.cal.dsin)
+%         
+%     
+%     end
+% end
+fprintf('There are currently %i dsin objects\n', numel(ld.cal.dsin));
+
 end
+
+
+
+
+
 

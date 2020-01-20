@@ -1,17 +1,35 @@
 function [pos_ffnames, loc_data, ok] = fx_fix2am(loc_ffname, loc_type, penn_ucl, dsins, ...
-    aviSets, sub_id, date_tag, eye_tag)
+    aviSets, sub_id, date_tag, eye_tag, out_path)
 %fx_fix2am converts fixation gui output to automontager input
 
 % todo: make dsins optional input arg
 % this is only required for the Penn automontager
 
+%% Handle optional inputs
+% todo: would be better to use the input parser
+if exist('sub_id', 'var') == 0 || isempty(sub_id)
+    sub_id = 'ID';
+end
+if exist('date_tag', 'var') == 0 || isempty(date_tag)
+    date_tag = 'yyyy_mm_dd';
+end
+if exist('eye_tag', 'var') == 0 || isempty(eye_tag)
+    date_tag = 'OX';
+end
+
 %% Read, process file
 [loc_path, loc_name, loc_ext] = fileparts(loc_ffname);
 loc_fname = [loc_name, loc_ext];
+if exist('out_path', 'var') == 0 || isempty(out_path)
+    out_path = loc_path;
+end
 
 switch loc_type
     case 'human'
         loc_data = processLocFile(loc_path, loc_fname);
+        if isempty(loc_data)
+            error('Position file failed to process');
+        end
     case 'animal'
         ver_no = getAnimalImgNoteVersion(loc_fname);
         switch ver_no
@@ -38,10 +56,14 @@ if strcmpi(penn_ucl, 'Penn') || strcmpi(penn_ucl, 'Both')
     template_fname = 'penn.xlsx';
     
     % Construct fringe table
-    fringe_tbl = zeros(numel(dsins), 2);
+    fringe_tbl = NaN(numel(dsins), 2);
     for ii=1:numel(dsins)
-        fringe_tbl(ii, 1) = dsins(ii).fov;
-        fringe_tbl(ii, 2) = dsins(ii).fringe_px;
+        if ~isempty(dsins(ii).fov)
+            fringe_tbl(ii, 1) = dsins(ii).fov;
+        end
+        if ~isempty(dsins(ii).fringe_px)
+            fringe_tbl(ii, 2) = dsins(ii).fringe_px;
+        end
     end
     
     % Generate position file data
@@ -55,10 +77,10 @@ if strcmpi(penn_ucl, 'Penn') || strcmpi(penn_ucl, 'Both')
     
     % Write data
     penn_ok = writePosFile(...
-        loc_path, out_fname, posfile, template_fname);
+        out_path, out_fname, posfile, template_fname);
     
     % Format output variable
-    pos_ffnames{1} = fullfile(loc_path, out_fname);
+    pos_ffnames{1} = fullfile(out_path, out_fname);
 end
 if strcmpi(penn_ucl, 'UCL') || strcmpi(penn_ucl, 'Both')
     % Choose template
@@ -75,7 +97,7 @@ if strcmpi(penn_ucl, 'UCL') || strcmpi(penn_ucl, 'Both')
     
     % Write data
     ucl_ok = writePosFile(...
-        loc_path, out_fname, posfile, template_fname);  
+        out_path, out_fname, posfile, template_fname);  
     
     % Format output variable
     pos_index = 1;
@@ -83,7 +105,7 @@ if strcmpi(penn_ucl, 'UCL') || strcmpi(penn_ucl, 'Both')
         pos_index = 2;
         
     end
-    pos_ffnames{pos_index} = fullfile(loc_path, out_fname);
+    pos_ffnames{pos_index} = fullfile(out_path, out_fname);
 end
 
 % Report errors

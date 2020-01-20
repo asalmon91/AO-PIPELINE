@@ -1,4 +1,7 @@
-function  [outNameList, imageFilename, TotalTransform, f_all, d_all] = AOMosiacAllMultiModal(imageDir, posFileLoc, outputDir, device_mode, ModalitiesSrchStrings,TransType,AppendToExisting,MontageSave,export_to_pshop,featureType)
+function MontageSave = ...
+    AOMosiacAllMultiModal(imageDir, loc_data, outputDir, device_mode, ...
+    ModalitiesSrchStrings, TransType, AppendToExisting, MontageSave, ...
+    export_to_pshop, featureType)
 %Main AO Montaging Function that creates a full montage from an input
 %directory with images and nominal coordinate location
 %Inputs:
@@ -30,8 +33,9 @@ function  [outNameList, imageFilename, TotalTransform, f_all, d_all] = AOMosiacA
 %
 %Written by Min Chen (minchen1@upenn.edu)
 %Edits by Robert F. Cooper (rfcooper@sas.upenn.edu)
+%Edits by Alex Salmon (asalmon@mcw.edu)
 
-tic
+% tic
 %Load Data
 %baseDir = 'C:\Users\Min\Dropbox\AOSLOImageProcessing\ConstructMontage\InputImages_Set1\';
 %fileID = fopen(fullfile(baseDir,'ImageInfo.txt'));
@@ -49,7 +53,8 @@ ROICropPct = 0;
 
 
 %Load info from descriptor file
-parallelFlag = exist('parfor');
+% parallelFlag = exist('parfor');
+parallelFlag = 0; % Can't do parfor within a parfeval
 
 %load data
 [inData, MN] = organizeDataByModality(imageDir, ModalitiesSrchStrings);
@@ -67,20 +72,39 @@ ResultsScaleToRef = -ones(N,N);
 ResultsTransformToRef = zeros(3,3,N,N);
 
 %read position file
-[imageFilename, eyeSide, pixelScale, LocXY, ID, NC, errorFlag] = readPositionFile(imageDir, inData, posFileLoc, device_mode, matchexp, MN, N);
-%catch errors
-if ischar(errorFlag)
-    errordlg(errorFlag);
-    outNameList = [];
-    return
+% [imageFilename, eyeSide, pixelScale, LocXY, ID, NC, errorFlag] = readPositionFile(imageDir, inData, posFileLoc, device_mode, matchexp, MN, N);
+% Unneeded for our purpose: eyeSide, ID, NC, errorFlag
+imageFilename = fullfile(imageDir, inData);
+pixelScale = loc_data.fovs;
+ID = cell(1,N);
+
+% Convert loc_data.coords char matrix to XY 2xN double matrix
+LocXY = nan(2,N);
+for ii=1:size(loc_data.coords, 1)
+    % 1) split each row by a comma
+    % 2) trim outside white space
+    % 3) convert each to double
+    LocXY(:, ii) = cellfun(@str2double, ...
+        cellfun(@strtrim, ...
+        strsplit(loc_data.coords(ii, :), ','), ...
+        'uniformoutput', false));
 end
 
+% %catch errors
+% if ischar(errorFlag)
+%     errordlg(errorFlag);
+%     outNameList = [];
+%     return
+% end
+
 %sort using LocXY
-[LocXY, inData, imageFilename, pixelScale,ID] = sortUsingLocXY(LocXY, inData, imageFilename, pixelScale, ID, MN);
+[LocXY, inData, imageFilename, pixelScale,~] = sortUsingLocXY(LocXY, inData, imageFilename, pixelScale, ID, MN);
 
 if(~AppendToExisting)
     %If new then calculate All Features
+    tic
     [f_all, d_all, h] = calculateFeatures(imageFilename, parallelFlag, pixelScale, featureType, MN, N);
+    toc
 else
     %If appending we start by loading variable from the save
     saved = load(MontageSave,'LocXY','inData','TransType',...
@@ -136,21 +160,21 @@ else
         else%if not calculate sift features
             if(parallelFlag)
                 
-                parfor m = 1:MN
-                    im = imread(char(imageFilename{m,n1}));
-                    im = imresize( im2single( im(:,:,1) ), pixelScale(n),'bilinear' );
-                    if(featureType == 0)
-                        [f1,d1] = vl_sift(im,'Levels',SiftLevel);
-                    elseif(featureType == 1)
-                        [f1,d1] = gridFeatures(im(:,:,1));
-                    else
-                        [f1,d1] = vl_sift(im,'Levels',SiftLevel);
-                    end
-                    [f1_crop, d1_crop] = filterSiftFeaturesByROI(im, f1, d1, ROICropPct);
-                    f_all{m,n1} = f1_crop;
-                    d_all{m,n1} = d1_crop;
-                end
-                
+%                 parfor m = 1:MN
+%                     im = imread(char(imageFilename{m,n1}));
+%                     im = imresize( im2single( im(:,:,1) ), pixelScale(n),'bilinear' );
+%                     if(featureType == 0)
+%                         [f1,d1] = vl_sift(im,'Levels',SiftLevel);
+%                     elseif(featureType == 1)
+%                         [f1,d1] = gridFeatures(im(:,:,1));
+%                     else
+%                         [f1,d1] = vl_sift(im,'Levels',SiftLevel);
+%                     end
+%                     [f1_crop, d1_crop] = filterSiftFeaturesByROI(im, f1, d1, ROICropPct);
+%                     f_all{m,n1} = f1_crop;
+%                     d_all{m,n1} = d1_crop;
+%                 end
+%                 
             else
                 for m = 1:MN
                     im = imread(char(imageFilename{m,n1}));
@@ -503,144 +527,147 @@ save(fullfile(outputDir,'AOMontageSave'),'LocXY','inData','TransType',...
     'ResultsNumOkMatches','ResultsNumMatches',...
     'ResultsTransformToRef','f_all','d_all','N','ResultsScaleToRef','MatchedTo','TotalTransform',...
     'RelativeTransformToRef');
+if ~AppendToExisting
+    MontageSave = fullfile(outputDir, 'AOMontageSave');
+end
 
 %% Determine the dominant direction of each shifted image
 Global=[1 0 0; 0 1 0;-minXAll -minYAll 1];
-if export_to_pshop
-    group_directions = cell(NumOfRefs,1);
-    for i = 1: NumOfRefs
-        for n = RefChains{i}
-            
-            % If we had 3 columns and we're not using the canon, then we can determine which should go in the
-            % "fovea" bin.
-            if ~strcmp(device_mode, 'canon') && (NC >= 3)
-                if any(strcmpi(strtrim(ID{n}), {'TRC','TR','MTE','MT','TM','TLC','TL',...
-                        'MRE','MR','C','CENTER','MLE','ML'...
-                        'BRC','BR','MBE','MB','BM','BLC','BL',}))
-                    group_directions{n} = 'Fovea';
-                    continue;
-                end
-            end
-            
-            H = TotalTransform(:,:,n);
-            
-            [greaterdist ind] = max( abs(H(1:2,3)) );
-            
-            if ind==1
-                if sign(H(ind,3)) == 1
-                    if strcmpi(eyeSide,'os')
-                        group_directions{n} = 'Temporal';
-                    elseif strcmpi(eyeSide,'od')
-                        group_directions{n} = 'Nasal';
-                        
-                    end
-                else
-                    if strcmpi(eyeSide,'os')
-                        group_directions{n} = 'Nasal';
-                    elseif strcmpi(eyeSide,'od')
-                        group_directions{n} = 'Temporal';
-                    end
-                end
-            else
-                if sign(H(ind,3)) == 1
-                    group_directions{n} = 'Superior';
-                else
-                    group_directions{n} = 'Inferior';
-                end
-            end
-        end
-    end
-    %%
-    % Only make folders for directions we have in the dataset.
-    numfov = unique(pixelScale);
-    for f=1:length(numfov)
-        unique_directions{f} = unique(group_directions(pixelScale==numfov(f)));
-    end
-    canvas_size = [length(vr) length(ur)];
-    
-    psconfig( 'pixels', 'pixels', 10, 'no' );
-    psnewdoc( canvas_size(2), canvas_size(1), 72, ['SAVE_ME_AS_SOMETHING_NICE.psd'], 'grayscale');
-    
-    % The sorting goes FOV->Modality->Direction
-    for f=length(fovlist):-1:1
-        make_Photoshop_group( fovlist{f} );
-        for m=MN:-1:1 %Make them backwards so that confocal is on top.
-            
-            make_Photoshop_group( strrep(ModalitiesSrchStrings{m},'_','') );
-            add_to_Photoshop_group( fovlist{f}, 0 );
-            
-            for k=1: length(unique_directions{f})
-                if ~isempty(unique_directions{f}{k})
-                    make_Photoshop_group( unique_directions{f}{k} );
-                    add_to_Photoshop_group( strrep(ModalitiesSrchStrings{m},'_',''), 0);
-                end
-                setActiveLayer(fovlist{f}, 1);
-            end
-        end
-        % Make the active layer the next FOV
-        setActiveLayer(fovlist{f}, 1);
-    end
-    
-    %%
-    for i = 1: NumOfRefs
-        for n = RefChains{i}
-            loadednames={};
-            for m=1: MN
-                if ~isempty(imageFilename{m,n})
-                    %Read each image, and then transform
-                    im = imresize( imread(char(imageFilename{m,n})),pixelScale(n) ); % They need to be pretty for output! Keep it bicubic
-                    
-                    if size(im,3) == 2
-                        im=padarray(im, [length(vr) length(ur) 2]-size(im),0,'post');
-                    else
-                        im=padarray(im, [length(vr) length(ur)]-size(im),0,'post');
-                    end
-                    
-                    H = TotalTransform(:,:,n);
-                    H = pinv(H');
-                    H(:,3)=[0;0;1];
-                  
-                    tform = affine2d(H*Global);
-                    im_=imwarp(im, imref2d(size(im)), tform,'OutputView', imref2d(size(im)));
-                    
-                    [pathstr,name,ext] = fileparts(char(imageFilename{m,n})) ;
-                    
-                    loadednames{m} = name;
-                    
-                    if size(im_,3) == 2
-                        nonzero = im_(:,:,2)>0;
-                        im_ = im_(:,:,1);
-                    else                        
-                        nonzero = im_>0;                            
-                    end
-                    
-                    if(isa(im,'double') || isa(im,'single'))
-                        im_(:,:,1) = uint8(round(im_*255));
-                        im_(:,:,2) = uint8(round(nonzero*255)); 
-                    else
-                        im_(:,:,1) = uint8(round(im_));
-                        im_(:,:,2) = uint8(round(nonzero*255)); 
-                    end
-                    
-                    saveName=[name,'_aligned_to_ref',num2str(i),'_m',num2str(m)];
-                    psnewlayer(saveName);
-                    
-                    pssetpixels(im_(:,:,2),16);
-                    pssetpixels(im_(:,:,1), 'undefined');
-                    
-                    add_to_Photoshop_group(num2str(pixelScale(n),'%0.2f'),1) % FOV
-                    add_to_Photoshop_group(ModalitiesSrchStrings{m},0) %Modality
-                    add_to_Photoshop_group(group_directions{n},0) % Direction
-                    
-                    numWritten = numWritten+1;
-                    waitbar(numWritten/(N*MN),h,strcat('Writing to Photoshop (',num2str(100*numWritten/(N*MN),3),'%)'));
-                end
-            end
-            % Link the layers we just imported
-            link_Photoshop_layers(loadednames);
-        end
-    end
-end
+% if export_to_pshop
+%     group_directions = cell(NumOfRefs,1);
+%     for i = 1: NumOfRefs
+%         for n = RefChains{i}
+%             
+%             % If we had 3 columns and we're not using the canon, then we can determine which should go in the
+%             % "fovea" bin.
+%             if ~strcmp(device_mode, 'canon') && (NC >= 3)
+%                 if any(strcmpi(strtrim(ID{n}), {'TRC','TR','MTE','MT','TM','TLC','TL',...
+%                         'MRE','MR','C','CENTER','MLE','ML'...
+%                         'BRC','BR','MBE','MB','BM','BLC','BL',}))
+%                     group_directions{n} = 'Fovea';
+%                     continue;
+%                 end
+%             end
+%             
+%             H = TotalTransform(:,:,n);
+%             
+%             [greaterdist ind] = max( abs(H(1:2,3)) );
+%             
+%             if ind==1
+%                 if sign(H(ind,3)) == 1
+%                     if strcmpi(eyeSide,'os')
+%                         group_directions{n} = 'Temporal';
+%                     elseif strcmpi(eyeSide,'od')
+%                         group_directions{n} = 'Nasal';
+%                         
+%                     end
+%                 else
+%                     if strcmpi(eyeSide,'os')
+%                         group_directions{n} = 'Nasal';
+%                     elseif strcmpi(eyeSide,'od')
+%                         group_directions{n} = 'Temporal';
+%                     end
+%                 end
+%             else
+%                 if sign(H(ind,3)) == 1
+%                     group_directions{n} = 'Superior';
+%                 else
+%                     group_directions{n} = 'Inferior';
+%                 end
+%             end
+%         end
+%     end
+%     %%
+%     % Only make folders for directions we have in the dataset.
+%     numfov = unique(pixelScale);
+%     for f=1:length(numfov)
+%         unique_directions{f} = unique(group_directions(pixelScale==numfov(f)));
+%     end
+%     canvas_size = [length(vr) length(ur)];
+%     
+%     psconfig( 'pixels', 'pixels', 10, 'no' );
+%     psnewdoc( canvas_size(2), canvas_size(1), 72, ['SAVE_ME_AS_SOMETHING_NICE.psd'], 'grayscale');
+%     
+%     % The sorting goes FOV->Modality->Direction
+%     for f=length(fovlist):-1:1
+%         make_Photoshop_group( fovlist{f} );
+%         for m=MN:-1:1 %Make them backwards so that confocal is on top.
+%             
+%             make_Photoshop_group( strrep(ModalitiesSrchStrings{m},'_','') );
+%             add_to_Photoshop_group( fovlist{f}, 0 );
+%             
+%             for k=1: length(unique_directions{f})
+%                 if ~isempty(unique_directions{f}{k})
+%                     make_Photoshop_group( unique_directions{f}{k} );
+%                     add_to_Photoshop_group( strrep(ModalitiesSrchStrings{m},'_',''), 0);
+%                 end
+%                 setActiveLayer(fovlist{f}, 1);
+%             end
+%         end
+%         % Make the active layer the next FOV
+%         setActiveLayer(fovlist{f}, 1);
+%     end
+%     
+%     %%
+%     for i = 1: NumOfRefs
+%         for n = RefChains{i}
+%             loadednames={};
+%             for m=1: MN
+%                 if ~isempty(imageFilename{m,n})
+%                     %Read each image, and then transform
+%                     im = imresize( imread(char(imageFilename{m,n})),pixelScale(n) ); % They need to be pretty for output! Keep it bicubic
+%                     
+%                     if size(im,3) == 2
+%                         im=padarray(im, [length(vr) length(ur) 2]-size(im),0,'post');
+%                     else
+%                         im=padarray(im, [length(vr) length(ur)]-size(im),0,'post');
+%                     end
+%                     
+%                     H = TotalTransform(:,:,n);
+%                     H = pinv(H');
+%                     H(:,3)=[0;0;1];
+%                   
+%                     tform = affine2d(H*Global);
+%                     im_=imwarp(im, imref2d(size(im)), tform,'OutputView', imref2d(size(im)));
+%                     
+%                     [pathstr,name,ext] = fileparts(char(imageFilename{m,n})) ;
+%                     
+%                     loadednames{m} = name;
+%                     
+%                     if size(im_,3) == 2
+%                         nonzero = im_(:,:,2)>0;
+%                         im_ = im_(:,:,1);
+%                     else                        
+%                         nonzero = im_>0;                            
+%                     end
+%                     
+%                     if(isa(im,'double') || isa(im,'single'))
+%                         im_(:,:,1) = uint8(round(im_*255));
+%                         im_(:,:,2) = uint8(round(nonzero*255)); 
+%                     else
+%                         im_(:,:,1) = uint8(round(im_));
+%                         im_(:,:,2) = uint8(round(nonzero*255)); 
+%                     end
+%                     
+%                     saveName=[name,'_aligned_to_ref',num2str(i),'_m',num2str(m)];
+%                     psnewlayer(saveName);
+%                     
+%                     pssetpixels(im_(:,:,2),16);
+%                     pssetpixels(im_(:,:,1), 'undefined');
+%                     
+%                     add_to_Photoshop_group(num2str(pixelScale(n),'%0.2f'),1) % FOV
+%                     add_to_Photoshop_group(ModalitiesSrchStrings{m},0) %Modality
+%                     add_to_Photoshop_group(group_directions{n},0) % Direction
+%                     
+%                     numWritten = numWritten+1;
+%                     waitbar(numWritten/(N*MN),h,strcat('Writing to Photoshop (',num2str(100*numWritten/(N*MN),3),'%)'));
+%                 end
+%             end
+%             % Link the layers we just imported
+%             link_Photoshop_layers(loadednames);
+%         end
+%     end
+% end
 
 
 %save tmp.mat;
@@ -733,6 +760,6 @@ for m = 1:MN
     
 end
 
-runtime=toc
-
+% runtime=toc
+end
 

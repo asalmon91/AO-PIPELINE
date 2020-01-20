@@ -20,7 +20,7 @@ live_data = updateCalDB(live_data, paths, opts);
 
 %% Update video database
 % fprintf('Updating video data...\n');
-live_data = updateVidDB(live_data, paths);
+live_data = updateVidDB(live_data, paths, opts);
 
 %% Update montage database
 % fprintf('Updating montage data...\n');

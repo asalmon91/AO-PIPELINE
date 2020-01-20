@@ -10,10 +10,7 @@ function ao_pipe(varargin)
 
 %% Imports
 fprintf('Initializing...\n');
-addpath(genpath('classes'));
-addpath(genpath('mods'));
-addpath(genpath('lib'));
-
+addpath(genpath('classes'), genpath('mods'), genpath('lib'));
 
 %% Installation
 % ini = checkFirstRun();
@@ -26,7 +23,7 @@ addpath(genpath('lib'));
 % lambda_order = [790; 680; 790; 790];
 
 
-%% Inputs
+%% Inputs & system settings
 [root_path, num_workers] = handle_input(varargin);
 [mod_order, lambda_order] = getModLambdaOrder();
 % TODO: Create new GUI for system options: should include modality,
@@ -69,6 +66,11 @@ if ~isfield(live_data.vid, 'arfs_opts') || isempty(live_data.vid.arfs_opts)
     end
 end
 
+%% Set up montaging
+live_data.mon.mon_opts.txfm_type = 0; % Translation only for LIVE
+live_data.mon.mon_opts.mods = {'confocal'; 'split_det'; 'avg'};
+vl_setup;
+% vl_version verbose
 
 %% Set up parallel pool
 do_par = true;

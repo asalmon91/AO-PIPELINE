@@ -5,9 +5,10 @@ classdef vidset
         vidnum {mustBeNumeric, mustBeNonnegative, mustBeFinite, isscalar};
         fov {mustBeNumeric, mustBePositive, mustBeFinite, isscalar};
         vids aovid;
-        processing logical = false;
-        processed logical = false;
-        hasCal logical = false;
+        processing logical  = false;
+        processed logical   = false;
+        hasCal logical      = false;
+        hasAllMods logical  = false;
     end
     
     methods

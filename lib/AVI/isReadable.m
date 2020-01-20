@@ -13,14 +13,26 @@ for ii=1:numel(in_fnames)
         clear vr;
         readSuccess(ii) = true;
     catch MException
-        if ...
-                strcmp(MException.identifier, ...
-                'MATLAB:audiovideo:VideoReader:InitializationFailed') || ...
-                strcmp(MException.identifier, ...
-                'MATLAB:audiovideo:VideoReader:FileNotFound')
+        if any(strcmp(MException.identifier, ...
+                {'MATLAB:audiovideo:VideoReader:UnknownCodec';
+                'MATLAB:audiovideo:VideoReader:InitializationFailed';
+                'MATLAB:audiovideo:VideoReader:FileNotFound';
+                'MATLAB:audiovideo:VideoReader:FilePermissionDenied'}))
             % Do nothing
             % todo: figure out why a file not found error is getting thrown
             % when they definitely exist...
+            
+            % For the unknown codec error, double check that the input is
+            % correct
+            % todo: could make some assertions about the inputs at the
+            % beginning to avoid this complicated try catch block
+            if strcmp(MException.identifier, ...
+                'MATLAB:audiovideo:VideoReader:UnknownCodec')
+                [~,~,ext] = fileparts(fullfile(in_path, in_fnames{ii}));
+                if ~strcmp(ext, '.avi')
+                    rethrow(MException);
+                end
+            end
         else
             rethrow(MException)
         end

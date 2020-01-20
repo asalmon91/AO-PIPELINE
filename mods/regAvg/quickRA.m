@@ -45,9 +45,6 @@ this_vidset.vids(1).fids = fids;
 %% Full-frame register these frames
 [ffr_imgs, fids] = quickFFR(vid, fids);
 
-%% Write images
-prime_out_fnames = outputFFR_imgs(ffr_imgs, fids, paths.out, prime_fname);
-
 % Read secondaries, apply txfms, create other mods, write images
 sec_ffr_imgs = cell(numel(ffr_imgs), 2);
 for ii=1:numel(sec_fnames)
@@ -83,6 +80,9 @@ for ii=1:size(sec_ffr_imgs,1)
     split_imgs{ii} = split_img;
     avg_imgs{ii} = avg_img;
 end
+
+%% Write images
+prime_out_fnames = outputFFR_imgs(ffr_imgs, fids, paths.out, prime_fname);
 
 split_fname = strrep(prime_fname, 'confocal', 'split_det');
 if ~strcmp(split_fname, prime_fname)

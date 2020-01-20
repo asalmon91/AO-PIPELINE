@@ -21,7 +21,8 @@ end
 fov = zeros(size(header_ffnames));
 for ii=1:numel(header_ffnames)
     if exist(header_ffnames{ii}, 'file') ~= 0
-        meta_data = load(header_ffnames{ii});
+        meta_data = persistent_load(header_ffnames{ii});
+        
         if isfield(meta_data, SCAN_TAG) % AOSLO video header
             fov(ii) = eval(sprintf('meta_data.%s.%s', SCAN_TAG, FOV_TAG));
         else % Try to extract from file name

@@ -1,6 +1,6 @@
 %% Imports
 addpath(genpath(fullfile('..', 'lib')));
-addpath(genpath(fullfile('..', 'mod')));
+addpath(genpath(fullfile('..', 'mods')));
 
 %% Constants
 FR = 16.666; % frame rate (seconds)
@@ -13,14 +13,16 @@ VID_NUM_EXP = sprintf('%s%s%s', ...
     '[_]', repmat('\d', 1, N_PAD), '[.]mat');
 
 %% Get source and target directories
-src = uigetdir('.', 'Select source root directory');
-if isnumeric(src)
-    return;
-end
-trg = uigetdir(src, 'Select target root directory');
-if isnumeric(trg)
-    return;
-end
+% src = uigetdir('.', 'Select source root directory');
+% if isnumeric(src)
+%     return;
+% end
+% trg = uigetdir(src, 'Select target root directory');
+% if isnumeric(trg)
+%     return;
+% end
+src = '\\purgatory\Animal_LongTerm\Squirrel\__Subjects\DM_154802\AOSLO\2019_08_04_OS';
+trg = 'C:\Users\DevLab_811\workspace\pipe_test\DM_154802\AOSLO\2019_08_04_OS';
 src_paths = initPaths(src);
 trg_paths = initPaths(trg);
 
@@ -163,11 +165,11 @@ for ii=1:numel(u_vid_nums)
     fprintf('Waiting %is before next "acquisition"\n', wait_time);
     pause(wait_time);
 end
+close(wb);
 
 %% Indicate that you're done by creating an empty text file
-root_path = fullfile(trg, '..');
 done_fname = 'done.txt';
-out_ffname = fullfile(root_path, done_fname);
+out_ffname = fullfile(trg, done_fname);
 fid = fopen(out_ffname, 'w');
 fclose(fid);
 

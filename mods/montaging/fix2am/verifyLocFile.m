@@ -13,7 +13,7 @@ version_str = [];
 
 %% Read file
 try
-    [~, ~, raw] = xlsread(in_ffname);
+    raw = readFixGuiFile(in_ffname);
     loc_head = raw(1,:);
 catch MException
     verified = false;
