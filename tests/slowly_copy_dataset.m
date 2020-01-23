@@ -80,6 +80,8 @@ for ii=1:numel(cal_avi_dir)
     % Write video
     fn_write_AVI(fullfile(trg_paths.cal, cal_avi_dir(ii).name), vid, ...
         FR, wb, WRITE_LAG)
+    
+    pause(10);
 end
 
 %% Get all aoslo headers

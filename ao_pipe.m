@@ -60,7 +60,7 @@ if ~isfield(live_data.vid, 'arfs_opts') || isempty(live_data.vid.arfs_opts)
     search = subdir('pcc_thresholds.txt');
     if numel(search) == 1
         live_data.vid.arfs_opts.pcc_thrs = ...
-            getPccThr(search.name, mod_order);
+            single(getPccThr(search.name, mod_order));
     else
         warning('PCC thresholds not found for ARFS, using defaults');
         live_data.vid.arfs_opts.pcc_thrs = ones(size(mod_order)).*0.01;
@@ -70,7 +70,7 @@ end
 %% Set up montaging
 live_data.mon.opts.mods = {'confocal'; 'split_det'; 'avg'};
 live_data.mon.opts.min_overlap = 0.25; % minimum proportion of overlap
-vl_setup;
+% vl_setup;
 % vl_version verbose
 
 %% Set up parallel pool
@@ -88,19 +88,6 @@ end
 % afterEach(q_v, @(x) updateUIT(x, 'vid'));
 % afterEach(q_m, @(x) updateUIT(x, 'mon'));
 
-% while ~live_data.done
-%     %% Calibration Loop
-%     [live_data, pff_cal] = calibrate_LIVE(live_data, ...
-%         paths, pff_cal, cpool);
-%     
-%     if exist(fullfile(paths.root, 'done.txt'), 'file') ~= 0
-%         live_data.done = true;
-%     else
-%         live_data = updateLIVE(paths, live_data, sys_opts);
-%     end
-% end
-
-
 %% LIVE LOOP
 while ~live_data.done
     %% Calibration Loop
@@ -112,7 +99,7 @@ while ~live_data.done
     checkFutureError(pff_cal)
     
     %% Montaging
-    [live_data, pff_mon] = montage_LIVE(live_data, paths, sys_opts, pff_mon, cpool);
+    [live_data, pff_mon, paths] = montage_LIVE(live_data, paths, sys_opts, pff_mon, cpool);
     checkFutureError(pff_mon)
     
     %% Update live database

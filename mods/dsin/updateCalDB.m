@@ -16,7 +16,7 @@ end
 lpmm = opts.lpmm;
 me_f = opts.me_f_mm*1000; % convert to microns
 for ii=1:numel(ld.cal.dsin)
-    if isempty(ld.cal.dsin(ii).ppd)
+    if isempty(ld.cal.dsin(ii).ppd) && ld.cal.dsin(ii).processed
         fringe = ld.cal.dsin(ii).fringe_px;
         ld.cal.dsin(ii).ppd = 1/(((1000/lpmm)/fringe/me_f)*(180/pi));
     end
@@ -35,11 +35,11 @@ if ~isfield(ld.cal, 'latest_datenum') || isempty(ld.cal.latest_datenum)
     ld.cal.latest_datenum = max([cal_vid_dir.datenum]);    
 else
     % If nothing is new, we can return
-    datenums = [cal_vid_dir.datenum];
-    if ~any(datenums > ld.cal.latest_datenum)
+    this_datenum = max([cal_vid_dir.datenum]);
+    if this_datenum == ld.cal.latest_datenum
         return;
     else % Update most recent file
-        ld.cal.latest_datenum = max(datenums);
+        ld.cal.latest_datenum = this_datenum;
     end
 end
 

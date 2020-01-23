@@ -1,7 +1,17 @@
-function suggested_locations = findBreaks(montages, loc_data, opts)
+function [suggested_locations, break_vidnums] = findBreaks(montages, loc_data, opts)
 %findBreaks identifies breaks in the montage and suggests acquisition
 %locations
 
+%% Defaults
+suggested_locations = [];
+break_vidnums = [];
+
+%% Check input
+if isempty(loc_data)
+    return;
+end
+
+%% Find video numbers involved in breaks
 all_break_pairs = [];
 for ii=1:numel(montages)
     % Get all vidnums
@@ -85,6 +95,7 @@ for ii=1:size(all_break_pairs, 1)
     suggested_locations(ii,:) = mean([loc_a; loc_b], 1);
 end
 suggested_locations = unique(suggested_locations, 'rows');
+break_vidnums = all_break_pairs(:);
 
 end
 

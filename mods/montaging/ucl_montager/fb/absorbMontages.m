@@ -13,22 +13,22 @@ if numel(montages) > 1
             img_ffnames = cellfun(@(x) x{1}, montages(ii).txfms, 'uniformoutput', false)';
             [~,img_names, img_exts] = cellfun(@fileparts, img_ffnames, 'uniformoutput', false);
             src_fnames = cellfun(@(x,y) [x,y], img_names, img_exts, 'uniformoutput', false);
-
+            
             for jj=1:numel(montages)
-                if jj<=ii || absorbed(jj) % Don't look backward
+                if jj<=ii || absorbed(jj) % Don't look back in anger
                     continue;
                 end
                 % Get all names in this montage
                 img_ffnames = cellfun(@(x) x{1}, montages(jj).txfms, 'uniformoutput', false)';
                 [~,img_names, img_exts] = cellfun(@fileparts, img_ffnames, 'uniformoutput', false);
                 trg_fnames = cellfun(@(x,y) [x,y], img_names, img_exts, 'uniformoutput', false);
-
+                
                 % See if any of the target filenames also exist in the source
                 % montage
                 shared_fname = '';
                 for kk=1:numel(trg_fnames)
                     if ismember(trg_fnames{kk}, src_fnames)
-                        fprintf('%s is shared between two montages, combining.\n', trg_fnames{kk});
+%                         fprintf('%s is shared between two montages, combining.\n', trg_fnames{kk});
                         shared_fname = trg_fnames{kk};
                         break;
                     end
@@ -36,13 +36,19 @@ if numel(montages) > 1
                 if ~isempty(shared_fname)
                     % Determine position of the shared image in the source and
                     % target montages.
-                    src_idx = strcmp(src_fnames, shared_fname);
+                    src_idx = find(strcmp(src_fnames, shared_fname));
+                    src_idx = src_idx(1); % There could be multiple shared
                     src_pos = cell2mat(montages(ii).txfms{src_idx}(2:3));
 
                     trg_idx = strcmp(trg_fnames, shared_fname);
-                    trg_pos = cell2mat(montages(jj).txfms{trg_idx}(2:3));
+                    trg_idx_1 = trg_idx(1); % There could be multiple shared
+                    trg_pos = cell2mat(montages(jj).txfms{trg_idx_1}(2:3));
 
                     dxdy = src_pos - trg_pos;
+                    
+                    % Remove the shared image from the target montage to
+                    % avoid redundancy
+                    montages(jj).txfms(trg_idx) = [];
 
                     % Shift all positions in the target montage to match the
                     % source montage

@@ -2,6 +2,9 @@ function montages = findSufficientMontage(montages, loc_data)
 %findSufficientMontage Determines if any of the montages contain at least
 %one image from every video
 
+if isempty(loc_data)
+    return;
+end
 
 for ii=1:numel(montages)
     % Get all video numbers

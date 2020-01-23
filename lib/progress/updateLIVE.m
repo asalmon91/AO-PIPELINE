@@ -28,7 +28,7 @@ live_data = updateMontageDB(live_data, paths);
 
 % Update session completion
 if ~live_data.done
-    live_data.done = is_session_done(paths.root);
+    live_data.done = is_session_done(paths.root, live_data);
     % TODO: GUI will include a button which tells the system that
     % acquisition is done
 end

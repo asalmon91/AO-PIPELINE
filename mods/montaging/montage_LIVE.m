@@ -2,7 +2,17 @@ function [ld, pff, paths] = montage_LIVE(ld, paths, opts, pff, pool_id)
 %montage_LIVE Handles parallelization for montaging
 
 %% Return if empty
-if isempty(ld.vid) || ~isfield(ld.vid, 'vid_set') || isempty(ld.vid.vid_set)
+if isempty(ld.vid) || ~isfield(ld.vid, 'vid_set') || ...
+        isempty(ld.vid.vid_set) || ~isfield(ld.mon, 'am_file') || ...
+        isempty(ld.mon.am_file)
+    return;
+end
+
+%% Check image directory for new images
+srch = dir(fullfile(paths.out, '*.tif'));
+this_datenum = max([srch.datenum]);
+if isfield(ld.mon, 'img_datenum') && ~isempty(ld.mon.img_datenum) && ...
+        this_datenum == ld.mon.img_datenum
     return;
 end
 
@@ -23,11 +33,19 @@ if strcmp(pff.State, 'unavailable')
     % connections. The goal here is not a perfect montage, just to
     % identify poor connections
 %     all_img_fnames = vertcat(ld.mon.imgs.fnames);
-    all_img_fnames = getNextMontage(ld);
-    if isempty(all_img_fnames)
+    prime_img_fnames = getNextMontage(ld);
+    if numel(prime_img_fnames) < 2
         return;
     end
-    
+    % Get the other modalities as well
+    n_mods = numel(ld.mon.opts.mods);
+    all_img_fnames = cell(numel(prime_img_fnames)*n_mods, 1);
+    for ii=1:numel(prime_img_fnames)
+        k = findImageInVidDB(ld, prime_img_fnames{ii});
+        all_img_fnames((ii-1)*n_mods +1:(ii-1)*n_mods +n_mods) = ...
+            ld.vid.vid_set(k(1)).vids(k(2)).fids(k(3)).cluster(k(4)).out_fnames;
+    end
+    % Sequester these images in a separate folder for montaging
     paths.tmp_mon = prepMiniMontage(paths.out, all_img_fnames);
     
     % Call the UCL automontager on this folder, unfortunately this still
@@ -40,12 +58,10 @@ if strcmp(pff.State, 'unavailable')
     % parsing the JSX, and updating the montage database. All that stuff is
     % cluttering up this function which is supposed to mirror the
     % calibrate_LIVE and ra_LIVE functions
-    if numel(loc_data.vidnums) >= 2
-            pff = parfeval(pool_id, @deployUCL_AM, 2, ...
-                'C:\Python37\python.exe', paths.tmp_mon, ...
-                fullfile(ld.mon.am_file.folder, ld.mon.am_file.name), ...
-                ld.eye, paths.tmp_mon);
-    end
+    pff = parfeval(pool_id, @deployUCL_AM, 2, ...
+        'C:\Python37\python.exe', paths.tmp_mon, ...
+        fullfile(ld.mon.am_file.folder, ld.mon.am_file.name), ...
+        ld.eye, paths.tmp_mon);
 end
 
 %% Check for completed process
@@ -80,9 +96,14 @@ if strcmp(pff.State, 'finished') && isempty(pff.Error)
         % Get the pixels per degree that was used for this montage
         this_ppd = ld.cal.dsin([ld.cal.dsin.fov] == min_fov).ppd;
         
-        % Overwrite the pixel units in jsx_data with degree values
+        % Overwrite the paths with the original output path
+        % Also overwrite the pixel units with degree values
         for ii=1:numel(jsx_data)
             for jj=1:numel(jsx_data(ii).txfms)
+                [~,img_name, img_ext] = fileparts(jsx_data(ii).txfms{jj}{1});
+                jsx_data(ii).txfms{jj}{1} = fullfile(paths.out, ...
+                    [img_name, img_ext]);
+                
                 for kk=2:5
                     jsx_data(ii).txfms{jj}{kk} = ...
                         jsx_data(ii).txfms{jj}{kk}./this_ppd;
@@ -101,6 +122,9 @@ if strcmp(pff.State, 'finished') && isempty(pff.Error)
     else % Need to check for errors within stdout
         error(stdout);
     end
+    
+    % Indicate that the database needs updating
+    ld.mon.needs_update = true;
     
     % Reset future object
     pff = parallel.FevalFuture();
