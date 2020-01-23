@@ -12,6 +12,16 @@ if isempty(ld.cal) || ~isfield(ld.cal, 'dsin')
     ld.cal.dsin = [];
 end
 
+%% Update scaling information
+lpmm = opts.lpmm;
+me_f = opts.me_f_mm*1000; % convert to microns
+for ii=1:numel(ld.cal.dsin)
+    if isempty(ld.cal.dsin(ii).ppd)
+        fringe = ld.cal.dsin(ii).fringe_px;
+        ld.cal.dsin(ii).ppd = 1/(((1000/lpmm)/fringe/me_f)*(180/pi));
+    end
+end
+
 %% Check directory for videos and headers
 cal_vid_dir = dir(fullfile(paths.cal, ['*', VID_EXT]));
 if isempty(cal_vid_dir)

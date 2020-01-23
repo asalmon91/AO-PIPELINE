@@ -9,6 +9,7 @@ classdef dsin
         fov {mustBePositive, mustBeFinite} = [];
         wavelength {mustBePositive, mustBeFinite} = 790; %nm
         lpmm {mustBePositive, mustBeFinite} = []; % lines/mm grid spacing
+        ppd {mustBePositive, mustBeFinite} = []; % pixels/degree
         mat {mustBeNumeric} = [];
         fringe_px {mustBePositive, mustBeFinite} = [];
         processing logical = false;

@@ -29,7 +29,8 @@ addpath(genpath('classes'), genpath('mods'), genpath('lib'));
 % TODO: Create new GUI for system options: should include modality,
 % wavelength, grid spacing
 sys_opts.lpmm = 3000/25.4; % lines per mm spacing in grids
-sys_opts.n_frames = 3; % # frames to average
+sys_opts.me_f_mm = 19; % model eye focal length (mm)
+sys_opts.n_frames = 5; % # frames to average
 sys_opts.mod_order = mod_order;
 sys_opts.lambda_order = lambda_order;
 
@@ -67,8 +68,8 @@ if ~isfield(live_data.vid, 'arfs_opts') || isempty(live_data.vid.arfs_opts)
 end
 
 %% Set up montaging
-live_data.mon.mon_opts.txfm_type = 0; % Translation only for LIVE
-live_data.mon.mon_opts.mods = {'confocal'; 'split_det'; 'avg'};
+live_data.mon.opts.mods = {'confocal'; 'split_det'; 'avg'};
+live_data.mon.opts.min_overlap = 0.25; % minimum proportion of overlap
 vl_setup;
 % vl_version verbose
 
