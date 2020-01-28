@@ -1,4 +1,4 @@
-function ld = updateMontageDB(ld, paths)
+function [ld, fh] = updateMontageDB(ld, paths, fh)
 %updateMontageDB Updates the montage database
 %   Updates the position file info
 %   Checks for images to be montaged
@@ -52,7 +52,7 @@ if read_loc_file
                     % Update the time stamp of the fixation GUI file only if we
                     % successfully update the automontager fixation file
                     ld.mon.loc_file.datenum = file_info.datenum;
-                    fprintf('Successfully updated\n%s\n', out_ffname{1});
+%                     fprintf('Successfully updated\n%s\n', out_ffname{1});
                 end
             end
         catch MException
@@ -190,7 +190,10 @@ end
 % for now, I think we need to limit it to updating a figure that uses the
 % math from the Penn AM to place everything on one canvas
 % close all;
-quickDisplayMontage(ld);
+if ~isfield(ld, 'gui_handles') || isempty(ld.gui_handles)
+    ld.gui_handles = [];
+end
+ld.gui_handles = displayMontage(ld, ld.gui_handles);
 
 % Indicate that the database has been updated
 ld.mon.needs_update = false;

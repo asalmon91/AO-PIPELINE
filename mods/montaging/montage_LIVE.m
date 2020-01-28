@@ -50,9 +50,6 @@ if strcmp(pff.State, 'unavailable')
     
     % Call the UCL automontager on this folder, unfortunately this still
     % means continually updating an excel file.
-%     [fail, stdout] = deployUCL_AM('C:\Python37\python.exe', paths.tmp_mon, ...
-%         fullfile(ld.mon.am_file.folder, ld.mon.am_file.name), ld.eye, ...
-%         paths.tmp_mon)
     
     % TODO: Make another function which includes the mini-montage setup,
     % parsing the JSX, and updating the montage database. All that stuff is
@@ -73,7 +70,14 @@ if strcmp(pff.State, 'finished') && isempty(pff.Error)
             'create_recent_montage_*_fov.jsx'));
         if numel(srch) ~= 1
             % This shouldn't happen
-            error('jsx not found');
+            warning(stdout);
+            warning('The automontager failed; retrying. If this keeps happening, restart the pipeline');
+            
+            % Should identify if there are
+            
+            rmdir(paths.tmp_mon, 's');
+            pff = parallel.FevalFuture();
+            return;
         end
         
         %% Parse the montage file

@@ -16,7 +16,8 @@ for ii=1:numel(fids)
             fids(ii).cluster(jj).fids(1), ...
             fids(ii).lid, fids(ii).cluster(jj).cid, ...
             numel(fids(ii).cluster(jj).fids));
-        imwrite(out_img, fullfile(out_path, out_fnames{img_idx}));
+        imwrite(out_img, fullfile(out_path, out_fnames{img_idx}), ...
+            'compression', 'none');
         fprintf('Writing %s\n', out_fnames{img_idx});
     end
 end

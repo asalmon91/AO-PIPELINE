@@ -15,35 +15,12 @@ addpath(genpath('classes'), genpath('mods'), genpath('lib'));
 %% Installation
 % ini = checkFirstRun();
 
-
-%% Constants
-% WAIT = 5; % seconds
-% PROFILING = false;
-% mod_order = {'confocal'; 'confocal'; 'split_det'; 'avg'};
-% lambda_order = [790; 680; 790; 790];
-
-
 %% Inputs & system settings
 [root_path, num_workers] = handle_input(varargin);
-[mod_order, lambda_order] = getModLambdaOrder();
-% TODO: Create new GUI for system options: should include modality,
-% wavelength, grid spacing
-sys_opts.lpmm = 3000/25.4; % lines per mm spacing in grids
-sys_opts.me_f_mm = 19; % model eye focal length (mm)
-sys_opts.n_frames = 5; % # frames to average
-sys_opts.mod_order = mod_order;
-sys_opts.lambda_order = lambda_order;
 
-%% Progress tracking and monitoring live montage
-% [wbf, wbh] = pipe_progress();
-% set(wbh.root_path_txt, 'string', root_path);
-
-%% Infer file locations
+%% Handle paths
 paths = initPaths(root_path);
-% set(wbh.raw_path_txt, 'string', paths.raw);
-% set(wbh.cal_path_txt, 'string', paths.cal);
-
-%% Create output path
+% Create output path
 if ~isfield(paths, 'out') || isempty(paths.out)
     paths.out = fullfile(paths.pro, 'LIVE');
     if exist(paths.out, 'dir') == 0
@@ -51,9 +28,22 @@ if ~isfield(paths, 'out') || isempty(paths.out)
     end
 end
 
-%% Update LIVE state
-live_data = updateLIVE(paths, [], sys_opts);
+%% Update LIVE state and options
+[live_data, sys_opts] = load_live_session(root_path);
 [live_data.date, live_data.eye] = getDateAndEye(paths.root);
+if isempty(sys_opts)
+    % todo: replace with input GUI
+    [mod_order, lambda_order] = getModLambdaOrder();
+    sys_opts.lpmm = 3000/25.4; % lines per mm spacing in grids
+    sys_opts.me_f_mm = 19; % model eye focal length (mm)
+    sys_opts.n_frames = 5; % # frames to average
+    sys_opts.mod_order = mod_order;
+    sys_opts.lambda_order = lambda_order;
+end
+[live_data, sys_opts] = updateLIVE(paths, live_data, sys_opts);
+
+%% Progress tracking and monitoring live montage
+% (todo)
 
 %% Get ARFS information
 if ~isfield(live_data.vid, 'arfs_opts') || isempty(live_data.vid.arfs_opts)
@@ -74,12 +64,9 @@ live_data.mon.opts.min_overlap = 0.25; % minimum proportion of overlap
 % vl_version verbose
 
 %% Set up parallel pool
-do_par = true;
 if num_workers > 1 && exist('parfor', 'builtin') ~= 0
     delete(gcp('nocreate'))
     cpool = parpool(num_workers, 'IdleTimeout', 120);
-else
-    do_par = false;
 end
 
 %% Set up queues
@@ -106,8 +93,31 @@ while ~live_data.done
     live_data = updateLIVE(paths, live_data, sys_opts);
 end
 
-%% FULL LOOP
+return;
 
+%% Finish live
+close all force;
+% todo: deal with figure handle for GUI and progress table
+
+%% FULL LOOP
+pipe_data = live_data;
+clear live_data;
+
+%% Calibration
+% Should be pretty simple, just make all the desinusoid files
+pipe_data = calibrate_FULL(pipe_data, paths, cpool);
+
+%% Videos - Secondaries, Registration/Averaging, EMR
+pipe_data = process_vids_FULL(pipe_data, paths, cpool);
+
+%% Montaging
+% Call Penn automontager
+% Find breaks, re-process videos, re-montage
+
+%% Analysis
+% Estimate spacing for whole montage, highest density used as 0,0
+% Extract ROIs outward from 0,0
+% Run CNN cone counts on these ROIs
 
 end
 

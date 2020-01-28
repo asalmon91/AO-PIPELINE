@@ -7,7 +7,6 @@ FR = 16.666; % frame rate (seconds)
 % write lag, very useful to induce some extra lag when writing videos to
 % test performace while some videos are in the middle of being written
 WRITE_LAG = 1/FR; % (seconds)
-WAIT_RANGE = [10, 20]; % seconds; min + rand between 0 and max
 N_PAD = 4;
 VID_NUM_EXP = sprintf('%s%s%s', ...
     '[_]', repmat('\d', 1, N_PAD), '[.]mat');
@@ -21,8 +20,8 @@ VID_NUM_EXP = sprintf('%s%s%s', ...
 % if isnumeric(trg)
 %     return;
 % end
-src = '\\purgatory\Animal_LongTerm\Squirrel\__Subjects\DM_154802\AOSLO\2019_08_04_OS';
-trg = 'C:\Users\DevLab_811\workspace\pipe_test\DM_154802\AOSLO\2019_08_04_OS';
+src = '\\purgatory\Animal_LongTerm\Squirrel\__Subjects\DM_154802\AOSLO\2019_08_04_OD';
+trg = 'C:\Users\DevLab_811\workspace\pipe_test\DM_154802\AOSLO\2018_08_04_OD';
 src_paths = initPaths(src);
 trg_paths = initPaths(trg);
 
@@ -58,6 +57,10 @@ if exist(trg_paths.cal, 'dir') == 0
     mkdir(cal_out_path);
 end
 cal_avi_dir = dir(fullfile(src_paths.cal, '*.avi'));
+
+%% Get delays from videos
+delays = diff([cal_avi_dir.datenum])*(24*3600);
+
 for ii=1:numel(cal_avi_dir)
     % Update total progress (for this loop)
     wb.Name = sprintf('%i/%i, %s', ii, numel(cal_avi_dir), ...
@@ -81,7 +84,13 @@ for ii=1:numel(cal_avi_dir)
     fn_write_AVI(fullfile(trg_paths.cal, cal_avi_dir(ii).name), vid, ...
         FR, wb, WRITE_LAG)
     
-    pause(10);
+    if ii < numel(cal_avi_dir)
+        if delays(ii) < 1
+            delays(ii) = 5;
+        end
+        waitbar(1, wb, sprintf('%is delay.', round(delays(ii))));
+        pause(delays(ii));
+    end
 end
 
 %% Get all aoslo headers
@@ -98,6 +107,16 @@ vid_nums = cellfun(@(x,y) (x( y+1 : y + N_PAD)), ...
 % Find unique entries
 u_vid_nums = unique(vid_nums);
 
+%% Get delays from the headers
+ts = zeros(size(u_vid_nums));
+for ii=1:numel(u_vid_nums)
+    vn_dir = dir(fullfile(src_paths.raw, ...
+        sprintf('*_%s.mat', u_vid_nums{ii})));
+    ts(ii) = min([vn_dir.datenum]);
+end
+delays = diff(ts)*(24*3600);
+
+%% Start writing videos
 for ii=1:numel(u_vid_nums)
     % Update total progress (for this loop)
     wb.Name = sprintf('%i/%i, %s', ii, numel(u_vid_nums), ...
@@ -163,9 +182,10 @@ for ii=1:numel(u_vid_nums)
     end
     
     %% Simulate delay between "acquisitions"
-    wait_time = WAIT_RANGE(1) + randi([0, WAIT_RANGE(2)], 1);
-    fprintf('Waiting %is before next "acquisition"\n', wait_time);
-    pause(wait_time);
+    if ii < numel(u_vid_nums)
+        waitbar(1, wb, sprintf('%is delay.', round(delays(ii))));
+        pause(delays(ii));
+    end
 end
 close(wb);
 

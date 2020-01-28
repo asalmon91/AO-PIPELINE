@@ -616,7 +616,11 @@ def match_desc(desc1, desc2, key):
     search_params = dict()  # or pass empty dictionary
 
     flann = cv2.FlannBasedMatcher(index_params, search_params)
-    matches = flann.knnMatch(desc1, desc2, k=2)
+    try:
+        matches = flann.knnMatch(desc1, desc2, k=2)
+    except:
+        good_matches = []
+        return good_matches, key
 
     good_matches = []
 

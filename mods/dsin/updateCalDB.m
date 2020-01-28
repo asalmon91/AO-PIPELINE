@@ -32,14 +32,18 @@ mat_fnames = strrep(avi_fnames, VID_EXT, HEAD_EXT);
 
 %% Check if directory has any new files
 if ~isfield(ld.cal, 'latest_datenum') || isempty(ld.cal.latest_datenum)
-    ld.cal.latest_datenum = max([cal_vid_dir.datenum]);    
+    ld.cal.latest_datenum = max([cal_vid_dir.datenum]);
+    ld.cal.n_vids = numel(avi_fnames);
 else
     % If nothing is new, we can return
     this_datenum = max([cal_vid_dir.datenum]);
-    if this_datenum == ld.cal.latest_datenum
+    this_n_vids  = numel(avi_fnames);
+    if this_datenum == ld.cal.latest_datenum && ...
+            this_n_vids == ld.cal.n_vids
         return;
     else % Update most recent file
         ld.cal.latest_datenum = this_datenum;
+        ld.cal.n_vids = this_n_vids;
     end
 end
 

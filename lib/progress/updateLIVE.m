@@ -1,18 +1,5 @@
-function live_data = updateLIVE(paths, live_data, opts)
+function [live_data, opts] = updateLIVE(paths, live_data, opts)
 %updateLIVE checks for new data
-
-%% Constants
-LIVE_FNAME = 'AO_PIPE_LIVE.mat';
-
-%% Check for existing database
-if (exist('live_data', 'var') == 0 || isempty(live_data)) && ...
-        exist(fullfile(paths.root, LIVE_FNAME), 'file') ~= 0
-    % First call and running on a previously run dataset
-    load(fullfile(paths.root, LIVE_FNAME), 'live_data');
-elseif exist('live_data', 'var') == 0 || isempty(live_data)
-    % Initialize live structure
-    live_data = init_live_data();
-end
 
 %% Update calibration database
 % fprintf('Updating calibration data...\n');
@@ -34,8 +21,18 @@ if ~live_data.done
 end
 
 %% Save current progress to disk
-% save(fullfile(paths.root, LIVE_FNAME), 'live_data');
-
+% Remove figure handle from live_data to avoid constant warnings and
+% excessive file size
+if isfield(live_data, 'gui_handles') && ~isempty(live_data.gui_handles)
+    guih = live_data.gui_handles;
+    live_data = rmfield(live_data, 'gui_handles');
+end
+% Save
+save(fullfile(paths.root, live_data.filename), 'live_data', 'opts');
+% Put in back on
+if exist('guih', 'var') && ~isempty(guih)
+    live_data.gui_handles = guih;
+end
 
 end
 
