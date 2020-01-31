@@ -10,11 +10,13 @@ classdef aovid
         ready logical = [];
         frames = []; % arfs structure, todo: make this a class
         fids = []; % arfs structure, includes link ids, cluster ids, frame ids, and output image names
+        t_create double = []; % clock vectors for profiling
     end
     
     methods
         function obj = aovid(filename, modality, wavelength)
             %aovid Construct an instance of this class
+            obj.t_create = clock;
             if nargin >= 1
                 obj.filename = filename;
             end

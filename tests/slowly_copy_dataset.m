@@ -3,6 +3,7 @@ addpath(genpath(fullfile('..', 'lib')));
 addpath(genpath(fullfile('..', 'mods')));
 
 %% Constants
+IGNORE_WL = {'680nm'};
 FR = 16.666; % frame rate (seconds)
 % write lag, very useful to induce some extra lag when writing videos to
 % test performace while some videos are in the middle of being written
@@ -20,8 +21,8 @@ VID_NUM_EXP = sprintf('%s%s%s', ...
 % if isnumeric(trg)
 %     return;
 % end
-src = '\\purgatory\Animal_LongTerm\Squirrel\__Subjects\DM_154802\AOSLO\2019_08_04_OD';
-trg = 'C:\Users\DevLab_811\workspace\pipe_test\DM_154802\AOSLO\2018_08_04_OD';
+src = '\\141.106.183.131\17439-FullBank\BL_12063\AO_2_3_SLO\2019_07_11_OS';
+trg = 'C:\Users\DevLab_811\workspace\pipe_test\BL_12063\AO_2_3_SLO\2019_07_11_OS';
 src_paths = initPaths(src);
 trg_paths = initPaths(trg);
 
@@ -58,10 +59,18 @@ if exist(trg_paths.cal, 'dir') == 0
 end
 cal_avi_dir = dir(fullfile(src_paths.cal, '*.avi'));
 
+% Sort calibration files by datenum to avoid alphabet bias
+[~,I] = sort([cal_avi_dir.datenum], 'ascend');
+cal_avi_dir = cal_avi_dir(I);
+
 %% Get delays from videos
 delays = diff([cal_avi_dir.datenum])*(24*3600);
 
 for ii=1:numel(cal_avi_dir)
+    if any(contains(cal_avi_dir(ii).name, IGNORE_WL))
+        continue;
+    end
+    
     % Update total progress (for this loop)
     wb.Name = sprintf('%i/%i, %s', ii, numel(cal_avi_dir), ...
         cal_avi_dir(ii).name);
@@ -89,7 +98,7 @@ for ii=1:numel(cal_avi_dir)
             delays(ii) = 5;
         end
         waitbar(1, wb, sprintf('%is delay.', round(delays(ii))));
-        pause(delays(ii));
+%         pause(delays(ii));
     end
 end
 
@@ -126,6 +135,18 @@ for ii=1:numel(u_vid_nums)
     current_heads = header_fnames(...
         contains(header_fnames, [u_vid_nums{ii}, '.mat']));
     current_avis = strrep(current_heads, '.mat', '.avi');
+    
+    % Skip any unwanted wavelengths
+    remove = false(size(current_avis));
+    for jj=1:numel(current_avis)
+        if any(contains(current_avis{jj}, IGNORE_WL))
+            remove(jj) = true;
+        end
+    end
+    current_avis(remove) = [];
+    if isempty(current_avis)
+        continue;
+    end
     
     %% Read all videos in this set
     vids = cell(size(current_avis));
@@ -184,7 +205,7 @@ for ii=1:numel(u_vid_nums)
     %% Simulate delay between "acquisitions"
     if ii < numel(u_vid_nums)
         waitbar(1, wb, sprintf('%is delay.', round(delays(ii))));
-        pause(delays(ii));
+%         pause(delays(ii));
     end
 end
 close(wb);

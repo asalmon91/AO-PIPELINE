@@ -92,66 +92,6 @@ if isfield(ld.mon, 'loc_data') && ~isempty(ld.mon.loc_data) && ...
     ld.mon.loc_data.fringes = fringes;
 end
 
-%% Find processed images, add to database
-% Initialize
-% if ~isfield(ld.mon, 'imgs') || isempty(ld.mon.imgs) || ...
-%         ~isfield(ld.mon.imgs, 'fnames')
-%     ld.mon.imgs = [];
-%     all_img_fnames = [];
-% else
-%     all_img_fnames = vertcat(ld.mon.imgs.fnames);
-% end
-% 
-% % Analyze video database
-% if ~isempty(ld.vid) && isfield(ld.vid, 'vid_set') && ~isempty(ld.vid.vid_set) && ...
-%         isfield(ld.mon, 'loc_data') && ~isempty(ld.mon.loc_data)
-%     % For all sets of videos
-%     for ii=1:numel(ld.vid.vid_set)
-%         if ~ld.vid.vid_set(ii).processed % Can ignore the unprocessed
-%             continue;
-%         end
-%         % Do we know the expected location for this video?
-%         this_num = ld.vid.vid_set(ii).vidnum;
-%         % vid_idx is the index of this video within the location data
-%         % structure
-%         vid_idx = find(this_num == ...
-%             cellfun(@str2double, ld.mon.loc_data.vidnums));
-%         if isempty(vid_idx)
-%             continue;
-%         end
-%         
-%         % For all videos within a set
-%         for jj=1:numel(ld.vid.vid_set(ii).vids)
-%             % For each set of frames ARFS was able to connect
-%             for kk=1:numel(ld.vid.vid_set(ii).vids(jj).fids)
-%                 % For each cluster within that set of frames
-%                 for mm=1:numel(ld.vid.vid_set(ii).vids(jj).fids(kk).cluster)
-%                     these_fnames = ld.vid.vid_set(ii).vids(jj).fids(kk).cluster(mm).out_fnames;
-%                     if ~ismember(these_fnames{1}, all_img_fnames)
-%                         % Organize location data into a structure 
-%                         these_imgs.fnames = these_fnames;
-%                         
-%                         % Parse expected location
-%                         coords = cellfun(@str2double, ...
-%                             strsplit(...
-%                             ld.mon.loc_data.coords(vid_idx, :), ','));
-%                         these_imgs.ex_loc = coords;
-%                         % Get FOV for determining expected overlap
-%                         these_imgs.fov = ld.mon.loc_data.fovs(vid_idx);
-%                         
-%                         % Add fields to track whether it was successfully
-%                         % matched to another image
-%                         these_imgs.matches = [];
-%                         
-%                         % Add to database in an inefficient way
-%                         ld.mon.imgs = vertcat(ld.mon.imgs, these_imgs);
-%                     end
-%                 end
-%             end
-%         end
-%     end
-% end
-
 %% Everything after this point requires montages
 if isempty(ld.mon.montages) || ~ld.mon.needs_update
     return;

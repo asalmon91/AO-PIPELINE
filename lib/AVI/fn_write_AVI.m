@@ -2,7 +2,10 @@ function fn_write_AVI(ffname,mat3d,fr,wb,lag)
 %fn_write_AVI Writes a 3d matrix as an AVI
 
 vw = VideoWriter(ffname, 'grayscale avi');
-vw.FrameRate = fr;
+vw.FrameRate = 30;
+if exist('fr', 'var') ~=0 && ~isempty(fr)
+    vw.FrameRate = fr;
+end
 
 if exist('wb', 'var') ~= 0 && ~isempty(wb)
     waitbar(0, wb, 'Writing to AVI');

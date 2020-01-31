@@ -23,7 +23,8 @@ end
 
 %% Check contents
 % First element should be the version #
-if ischar(loc_head{1}) && regexp(loc_head{1}, MATCH_EXP) == 1
+ver_check = regexp(loc_head{1}, MATCH_EXP);
+if ischar(loc_head{1}) &&  ~isempty(ver_check) && ver_check == 1
     % Extract version # and treat accordingly
     version_str = loc_head{1}(2:end);
     switch version_str

@@ -33,12 +33,13 @@ end
 [live_data.date, live_data.eye] = getDateAndEye(paths.root);
 if isempty(sys_opts)
     % todo: replace with input GUI
-    [mod_order, lambda_order] = getModLambdaOrder();
+%     [mod_order, lambda_order] = getModLambdaOrder();
     sys_opts.lpmm = 3000/25.4; % lines per mm spacing in grids
     sys_opts.me_f_mm = 19; % model eye focal length (mm)
+    sys_opts.strip_reg = true;
     sys_opts.n_frames = 5; % # frames to average
-    sys_opts.mod_order = mod_order;
-    sys_opts.lambda_order = lambda_order;
+    sys_opts.mod_order = {'confocal';'reflect';'direct'};
+    sys_opts.lambda_order = [775;775;775];
 end
 [live_data, sys_opts] = updateLIVE(paths, live_data, sys_opts);
 
@@ -50,10 +51,10 @@ if ~isfield(live_data.vid, 'arfs_opts') || isempty(live_data.vid.arfs_opts)
     search = subdir('pcc_thresholds.txt');
     if numel(search) == 1
         live_data.vid.arfs_opts.pcc_thrs = ...
-            single(getPccThr(search.name, mod_order));
+            single(getPccThr(search.name, sys_opts.mod_order));
     else
         warning('PCC thresholds not found for ARFS, using defaults');
-        live_data.vid.arfs_opts.pcc_thrs = ones(size(mod_order)).*0.01;
+        live_data.vid.arfs_opts.pcc_thrs = ones(size(sys_opts.mod_order)).*0.01;
     end
 end
 
@@ -92,6 +93,9 @@ while ~live_data.done
     %% Update live database
     live_data = updateLIVE(paths, live_data, sys_opts);
 end
+
+%% Output montage for manual inspection
+outputMontage(ld, paths);
 
 return;
 

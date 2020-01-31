@@ -11,8 +11,9 @@ end
 %% Check image directory for new images
 srch = dir(fullfile(paths.out, '*.tif'));
 this_datenum = max([srch.datenum]);
+
 if isfield(ld.mon, 'img_datenum') && ~isempty(ld.mon.img_datenum) && ...
-        this_datenum == ld.mon.img_datenum
+        this_datenum == ld.mon.img_datenum && ~any(all(findImageInMonDB(ld, {srch.name}) == 0, 2))
     return;
 end
 

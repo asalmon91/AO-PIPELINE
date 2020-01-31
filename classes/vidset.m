@@ -9,11 +9,15 @@ classdef vidset
         processed logical   = false;
         hasCal logical      = false;
         hasAllMods logical  = false;
+        t_proc_create double = [];
+        t_proc_start double = [];
+        t_proc_end double = [];
     end
     
     methods
         function obj = vidset(vidnum, fov)
             %vidset Construct an instance of this class
+            obj.t_proc_create = clock;
             if nargin >= 1
                 obj.vidnum = vidnum;
             end
