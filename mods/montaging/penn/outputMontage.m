@@ -82,9 +82,9 @@ for ii=1:numel(montages)
     areas(ii) = abs(maxy-miny) * abs(maxx-minx);
 end
 % Sort montages so that the largest ones are in the middle
-I = bellSort(areas);
-montages = montages(I);
-txfm_cell = txfm_cell(I);
+% I = bellSort(areas);
+% montages = montages(I);
+% txfm_cell = txfm_cell(I);
 
 %% Create canvas and start writing
 canvas_hw = ceil(canvas_hw);

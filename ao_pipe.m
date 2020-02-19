@@ -1,4 +1,4 @@
-function ao_pipe(varargin)
+function live_data = ao_pipe(varargin)
 %live_pipe Waits for new videos in root_path and begins processing them
 % optional "name, value" pair input arguments include:
 %   @root_path: the full path to the directory which contains the "Raw" and
@@ -7,16 +7,19 @@ function ao_pipe(varargin)
 %   given, default is the maximum number of workers available. If
 %   num_workers is 1, then a parallel pool will not be used and the process
 %   will wait until a video set is finished before starting the next one.
+%   @pipe_gui is a pipe_progress_App object that contains settings and user
+%   preferences necessary for running, as well as several tables for
+%   reporting progress
 
 %% Imports
-fprintf('Initializing...\n');
+% fprintf('Initializing...\n');
 addpath(genpath('classes'), genpath('mods'), genpath('lib'));
 
 %% Installation
 % ini = checkFirstRun();
 
 %% Inputs & system settings
-[root_path, num_workers] = handle_input(varargin);
+[root_path, num_workers, gui] = handle_input(varargin);
 
 %% Handle paths
 paths = initPaths(root_path);
@@ -29,22 +32,18 @@ if ~isfield(paths, 'out') || isempty(paths.out)
 end
 
 %% Update LIVE state and options
-[live_data, sys_opts] = load_live_session(root_path);
+[live_data, sys_opts] = load_live_session(paths.root);
 [live_data.date, live_data.eye] = getDateAndEye(paths.root);
-if isempty(sys_opts)
-    % todo: replace with input GUI
-%     [mod_order, lambda_order] = getModLambdaOrder();
-    sys_opts.lpmm = 3000/25.4; % lines per mm spacing in grids
-    sys_opts.me_f_mm = 19; % model eye focal length (mm)
-    sys_opts.strip_reg = true;
-    sys_opts.n_frames = 5; % # frames to average
-    sys_opts.mod_order = {'confocal';'reflect';'direct'};
-    sys_opts.lambda_order = [775;775;775];
+if isempty(sys_opts) && exist('gui', 'var') ~= 0 && ~isempty(gui)
+    % todo: Should we make a function that parses gui data to sys_opts?
+    sys_opts.lpmm           = gui.grid_freq.Value/25.4; % lines per mm spacing in grids
+    sys_opts.me_f_mm        = gui.grid_focal.Value; % model eye focal length (mm)
+    sys_opts.strip_reg      = gui.sr_live_cb.Value;
+    sys_opts.n_frames       = gui.n_frames_live_txt.Value; % # frames to average
+    sys_opts.mod_order      = gui.in_mods_uit.Data(:,1)';
+    sys_opts.lambda_order   = gui.in_mods_uit.Data(:,2)';
 end
-[live_data, sys_opts] = updateLIVE(paths, live_data, sys_opts);
-
-%% Progress tracking and monitoring live montage
-% (todo)
+live_data = updateLIVE(paths, live_data, sys_opts);
 
 %% Get ARFS information
 if ~isfield(live_data.vid, 'arfs_opts') || isempty(live_data.vid.arfs_opts)
@@ -59,10 +58,10 @@ if ~isfield(live_data.vid, 'arfs_opts') || isempty(live_data.vid.arfs_opts)
 end
 
 %% Set up montaging
-live_data.mon.opts.mods = {'confocal'; 'split_det'; 'avg'};
+live_data.mon.opts.mods = gui.mod_order_uit.Data(:,1)';
 live_data.mon.opts.min_overlap = 0.25; % minimum proportion of overlap
-% vl_setup;
-% vl_version verbose
+% todo: decide if min_overlap should be a setting; this is just for
+% feedback, so it's probably fine to hard-code
 
 %% Set up parallel pool
 if num_workers > 1 && exist('parfor', 'builtin') ~= 0
@@ -95,7 +94,7 @@ while ~live_data.done
 end
 
 %% Output montage for manual inspection
-outputMontage(ld, paths);
+outputMontage(live_data, paths);
 
 return;
 
@@ -115,6 +114,8 @@ pipe_data = calibrate_FULL(pipe_data, paths, cpool);
 pipe_data = process_vids_FULL(pipe_data, paths, cpool);
 
 %% Montaging
+% vl_setup;
+% vl_version verbose
 % Call Penn automontager
 % Find breaks, re-process videos, re-montage
 
@@ -356,11 +357,12 @@ end
 % end
 
 
-function [root_path, num_workers] = handle_input(usr_input)
+function [root_path, num_workers, pipe_gui] = handle_input(usr_input)
 
 %% Defaults
 root_path = '';
 num_workers = 1;
+pipe_gui = [];
 
 % Get maximum number of workers
 this_pc_cluster = parcluster('local');
@@ -374,12 +376,13 @@ ip.FunctionName = mfilename;
 isValidPath = @(x) ischar(x) && (exist(x, 'dir') ~= 0);
 isValidNumWorkers = @(x) isnumeric(x) && isscalar(x) && ...
     x >= 1 && x <= max_n_workers;
+isValidGui = @(x) isa(x, 'pipe_progress_App');
 
 %% Optional input parameters
-% todo: support batch by allowing cell arrays
 opt_params = {...
     'root_path',        '',             isValidPath;
-    'num_workers',      max_n_workers,	isValidNumWorkers};
+    'num_workers',      max_n_workers,	isValidNumWorkers;
+    'pipe_gui',         [],             isValidGui};
 
 % Add to parser
 for ii=1:size(opt_params, 1)

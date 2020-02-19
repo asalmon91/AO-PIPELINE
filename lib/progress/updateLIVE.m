@@ -1,4 +1,4 @@
-function [live_data, opts] = updateLIVE(paths, live_data, opts)
+function [live_data] = updateLIVE(paths, live_data, opts)
 %updateLIVE checks for new data
 
 %% Update calibration database
