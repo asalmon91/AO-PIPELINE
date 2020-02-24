@@ -24,6 +24,7 @@ sec_fnames = fnames(~(primary_mod & primary_wavelength));
 
 %% Read primary sequence
 vid = single(gpuArray(fn_read_AVI(fullfile(paths.raw, prime_fname))));
+this_vidset.t_proc_read = clock;
 
 %% Desinusoid
 %todo: Make function apply dsin
@@ -33,6 +34,7 @@ for ii=1:size(vid, 3)
     dsin_vid(:,:,ii) = vid(:,:,ii) * this_dsin.mat';
 end
 vid = dsin_vid; clear dsin_vid;
+this_vidset.t_proc_dsind = clock;
 
 %% Select reference frames
 % todo: make mfpc an option
@@ -63,6 +65,8 @@ if isempty(fids)
     this_vidset.processed = true;
     return;
 end
+
+this_vidset.t_proc_arfs = clock;
 
 %% Fast strip-registration
 % Current approach: output short videos and use DeMotion as usual
@@ -141,6 +145,7 @@ else
         end
     end
 end
+this_vidset.t_proc_ra = clock;
 
 %% Done!
 this_vidset.processing = false;

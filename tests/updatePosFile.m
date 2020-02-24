@@ -1,4 +1,4 @@
-function updatePosFile(loc_data, vidnums, out_ffname)
+function updatePosFile(loc_data, vidnums, out_ffname, eye_tag)
 %updatePosFile overwrites the position file for simulation of an AO session
 %   if vidnums is empty, just write the header
 
@@ -11,11 +11,18 @@ if isempty(vidnums)
     return;
 end
 
+% Filter out wrong eye
+wrong_eye = ~strcmpi(eye_tag, loc_data.eyes);
+loc_data.coords(wrong_eye, :)   = [];
+loc_data.eyes(wrong_eye)        = [];
+loc_data.fovs(wrong_eye)        = [];
+loc_data.vidnums(wrong_eye)     = [];
+
+% Determine indices
 loc_data_idx = zeros(size(vidnums));
 for ii=1:numel(vidnums)
-    loc_data_idx(ii) = find(strcmp(vidnums{ii}, loc_data.vidnums));
+    loc_data_idx(ii) = find(strcmp(vidnums{ii}, loc_data.vidnums), 1);
 end
-
 
 % Get vidnum out
 vidnums_out = mat2cell(...

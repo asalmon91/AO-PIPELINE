@@ -41,9 +41,16 @@ if isempty(sys_opts) && exist('gui', 'var') ~= 0 && ~isempty(gui)
     sys_opts.strip_reg      = gui.sr_live_cb.Value;
     sys_opts.n_frames       = gui.n_frames_live_txt.Value; % # frames to average
     sys_opts.mod_order      = gui.in_mods_uit.Data(:,1)';
-    sys_opts.lambda_order   = gui.in_mods_uit.Data(:,2)';
+    sys_opts.lambda_order   = cell2mat(cellfun(@str2double, ...
+        gui.in_mods_uit.Data(:,2)', 'uniformoutput', false));
 end
-live_data = updateLIVE(paths, live_data, sys_opts);
+live_data = updateLIVE(paths, live_data, sys_opts, gui);
+
+%% Update all progress
+% in case it was interrupted
+update_pipe_progress(live_data, paths, 'cal', gui);
+update_pipe_progress(live_data, paths, 'vid', gui);
+update_pipe_progress(live_data, paths, 'mon', gui);
 
 %% Get ARFS information
 if ~isfield(live_data.vid, 'arfs_opts') || isempty(live_data.vid.arfs_opts)
@@ -62,39 +69,42 @@ live_data.mon.opts.mods = gui.mod_order_uit.Data(:,1)';
 live_data.mon.opts.min_overlap = 0.25; % minimum proportion of overlap
 % todo: decide if min_overlap should be a setting; this is just for
 % feedback, so it's probably fine to hard-code
+mon_app = montage_display_App(gui.mod_order_uit.Data);
 
 %% Set up parallel pool
 if num_workers > 1 && exist('parfor', 'builtin') ~= 0
-    delete(gcp('nocreate'))
-    cpool = parpool(num_workers, 'IdleTimeout', 120);
+    cpool = gcp('nocreate');
+    if isempty(cpool) || ~cpool.Connected || cpool.NumWorkers ~= num_workers
+        delete(gcp('nocreate'))
+        cpool = parpool(num_workers, 'IdleTimeout', 120);
+    end
 end
 
 %% Set up queues
-[pff_cal, q_c, pff_vid, q_v, pff_mon, q_m] = initQueues();
-% afterEach(q_c, @(x) updateUIT(x, 'cal'));
+[pff_cal, ~, pff_vid, ~, pff_mon, ~] = initQueues();
+% todo: figure out how to allow multiple threads for videos, at that point,
+% the queue/afterEach/send procedure may be useful
+% afterEach(q_c, @(x) update_pipe_progress(x, paths, 'cal', gui));
 % afterEach(q_v, @(x) updateUIT(x, 'vid'));
 % afterEach(q_m, @(x) updateUIT(x, 'mon'));
 
 %% LIVE LOOP
 while ~live_data.done
     %% Calibration Loop
-    [live_data, pff_cal] = calibrate_LIVE(live_data, paths, pff_cal, cpool);
+    [live_data, pff_cal] = calibrate_LIVE(live_data, paths, pff_cal, cpool, gui);
     checkFutureError(pff_cal)
     
     %% Registration/Averaging
-    [live_data, pff_vid] = ra_LIVE(live_data, paths, sys_opts, pff_vid, cpool);
+    [live_data, pff_vid] = ra_LIVE(live_data, paths, sys_opts, pff_vid, cpool, gui);
     checkFutureError(pff_cal)
     
     %% Montaging
-    [live_data, pff_mon, paths] = montage_LIVE(live_data, paths, sys_opts, pff_mon, cpool);
+    [live_data, pff_mon, paths] = montage_LIVE(live_data, paths, sys_opts, pff_mon, cpool, gui);
     checkFutureError(pff_mon)
     
     %% Update live database
-    live_data = updateLIVE(paths, live_data, sys_opts);
+    live_data = updateLIVE(paths, live_data, sys_opts, gui, mon_app);
 end
-
-%% Output montage for manual inspection
-outputMontage(live_data, paths);
 
 return;
 

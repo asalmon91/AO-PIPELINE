@@ -1,4 +1,4 @@
-function [ld, fh] = updateMontageDB(ld, paths, fh)
+function [ld, montage_app] = updateMontageDB(ld, paths, gui, montage_app)
 %updateMontageDB Updates the montage database
 %   Updates the position file info
 %   Checks for images to be montaged
@@ -21,7 +21,7 @@ if isempty(ld.mon) || ~isfield(ld.mon, 'loc_file') || isempty(ld.mon.loc_file)
 else
     % Check for updates
     file_info = dir(ld.mon.loc_file.name);
-    if file_info.datenum > ld.mon.loc_file.datenum
+    if file_info.datenum > ld.mon.loc_file.datenum || isempty(montage_app)
         % File has been updated
         read_loc_file = true;
         
@@ -124,16 +124,10 @@ elseif numel(ld.mon.montages) == 1
 end
 
 %% Display updated montage
-% todo: this ought to be a GUI, not just a figure, which allows switching
-% modalities, switching between showing only one disjoint at a time.
-% Sorted by size
-% for now, I think we need to limit it to updating a figure that uses the
-% math from the Penn AM to place everything on one canvas
-% close all;
-if ~isfield(ld, 'gui_handles') || isempty(ld.gui_handles)
-    ld.gui_handles = [];
-end
-ld.gui_handles = displayMontage(ld, ld.gui_handles);
+% todo: Figure out a better method of plotting disjoints (more like Penn)
+montage_app.live_data = ld;
+montage_app.updateDisplay();
+% montage_app = displayMontage(ld, montage_app, gui);
 
 % Indicate that the database has been updated
 ld.mon.needs_update = false;

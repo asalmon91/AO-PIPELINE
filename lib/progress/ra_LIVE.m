@@ -1,4 +1,4 @@
-function [ld, pff] = ra_LIVE(ld, paths, opts, pff, pool_id)
+function [ld, pff] = ra_LIVE(ld, paths, opts, pff, pool_id, gui)
 %ra_LIVE Handles parallelization for registration and averaging
 
 %% Return if empty
@@ -16,6 +16,7 @@ if strcmp(pff.State, 'unavailable')
         dsin_idx = matchVidsetToDsin(ld.vid.vid_set(ld.vid.current_idx), ld.cal.dsin);
         this_dsin = ld.cal.dsin(dsin_idx);
         pff = parfeval(pool_id, @quickRA, 1, ld, paths, this_dsin, opts);
+        update_pipe_progress(ld, paths, 'vid', gui)
     end
 end
 
@@ -29,6 +30,7 @@ if strcmp(pff.State, 'finished') && isempty(pff.Error)
     end
     % Reset future object
     pff = parallel.FevalFuture();
+    update_pipe_progress(ld, paths, 'vid', gui)
 elseif ~isempty(pff.Error)
     % TODO: handle error
     rethrow(pff.Error)

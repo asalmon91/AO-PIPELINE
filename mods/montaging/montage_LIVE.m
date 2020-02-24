@@ -1,4 +1,4 @@
-function [ld, pff, paths] = montage_LIVE(ld, paths, opts, pff, pool_id)
+function [ld, pff, paths] = montage_LIVE(ld, paths, opts, pff, pool_id, gui)
 %montage_LIVE Handles parallelization for montaging
 
 %% Return if empty
@@ -60,6 +60,7 @@ if strcmp(pff.State, 'unavailable')
         'C:\Python37\python.exe', paths.tmp_mon, ...
         fullfile(ld.mon.am_file.folder, ld.mon.am_file.name), ...
         ld.eye, paths.tmp_mon);
+    update_pipe_progress(ld, paths, 'mon', gui);
 end
 
 %% Check for completed process
@@ -133,7 +134,7 @@ if strcmp(pff.State, 'finished') && isempty(pff.Error)
     
     % Reset future object
     pff = parallel.FevalFuture();
-    
+    update_pipe_progress(ld, paths, 'mon', gui);
 elseif ~isempty(pff.Error)
     % TODO: handle some error types
     rethrow(pff.Error)

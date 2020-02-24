@@ -83,17 +83,19 @@ gridPairs = pairHorzVert(orientations, fovs, wavelengths, avi_fnames);
 
 %% Check for existing desinusoid matrices in database
 remove = false(size(gridPairs));
-for ii=1:numel(ld.cal.dsin)
-    this_dsin = ld.cal.dsin(ii);
-    fovs        = [gridPairs.fov]';
-    wavelengths = [gridPairs.wl_nm]';
-    h_fnames    = {gridPairs.h_fname}';
-    v_fnames    = {gridPairs.v_fname}';
-    remove(ii) = any(...
-        this_dsin.fov == fovs & ...
-        this_dsin.wavelength == wavelengths & ...
-        strcmp(this_dsin.h_filename, h_fnames) & ...
-        strcmp(this_dsin.v_filename, v_fnames));    
+if ~isempty(gridPairs)
+    for ii=1:numel(ld.cal.dsin)
+        this_dsin = ld.cal.dsin(ii);
+        fovs        = [gridPairs.fov]';
+        wavelengths = [gridPairs.wl_nm]';
+        h_fnames    = {gridPairs.h_fname}';
+        v_fnames    = {gridPairs.v_fname}';
+        remove(ii) = any(...
+            this_dsin.fov == fovs & ...
+            this_dsin.wavelength == wavelengths & ...
+            strcmp(this_dsin.h_filename, h_fnames) & ...
+            strcmp(this_dsin.v_filename, v_fnames));    
+    end
 end
 gridPairs(remove) = [];
 

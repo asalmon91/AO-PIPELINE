@@ -1,4 +1,4 @@
-function [live_data] = updateLIVE(paths, live_data, opts)
+function [live_data, montage_app] = updateLIVE(paths, live_data, opts, gui, montage_app)
 %updateLIVE checks for new data
 
 %% Update calibration database
@@ -10,14 +10,14 @@ live_data = updateCalDB(live_data, paths, opts);
 live_data = updateVidDB(live_data, paths, opts);
 
 %% Update montage database
-% fprintf('Updating montage data...\n');
-live_data = updateMontageDB(live_data, paths);
+if exist('montage_app', 'var') == 0 || isempty(montage_app)
+    montage_app = [];
+end
+live_data = updateMontageDB(live_data, paths, gui, montage_app);
 
 % Update session completion
 if ~live_data.done
-    live_data.done = is_session_done(paths.root, live_data);
-    % TODO: GUI will include a button which tells the system that
-    % acquisition is done
+    live_data.done = gui.finished;
 end
 
 %% Save current progress to disk

@@ -27,6 +27,7 @@ src_paths = initPaths(src);
 trg_paths = initPaths(trg);
 
 %% Get position file, read, process
+[~, eye_tag] = getDateAndEye(src);
 loc_file_data = find_AO_location_file(src);
 if isempty(loc_file_data)
     [pos_fname, pos_path] = uigetfile(...
@@ -41,7 +42,6 @@ if strcmp(loc_ext, '.csv')
 elseif strcmp(loc_ext, '.xlsx')
     % TODO: fix animal imaging notes processing
     aviSets = getAviSets(src_paths.raw);
-    [~, eye_tag] = getDateAndEye(src_paths.root);
     loc_data = processAnimalLocFile(loc_path, [loc_name, loc_ext], ...
             'AO_Img', aviSets, eye_tag);
 end
@@ -159,7 +159,7 @@ for ii=1:numel(u_vid_nums)
     
     %% Update position file
     updatePosFile(loc_data, u_vid_nums(1:ii), ...
-        fullfile(trg_paths.raw, 'locations.csv'));
+        fullfile(trg_paths.raw, 'locations.csv'), eye_tag);
     
     %% Create video writers and headers
     for jj=1:numel(current_avis)
@@ -205,16 +205,20 @@ for ii=1:numel(u_vid_nums)
     %% Simulate delay between "acquisitions"
     if ii < numel(u_vid_nums)
         waitbar(1, wb, sprintf('%is delay.', round(delays(ii))));
-%         pause(delays(ii));
+        pause(delays(ii));
+%         pause();
     end
 end
 close(wb);
 
+%% Let tester know there are no more videos
+msgbox('Done!', '', 'help')
+
 %% Indicate that you're done by creating an empty text file
-done_fname = 'done.txt';
-out_ffname = fullfile(trg, done_fname);
-fid = fopen(out_ffname, 'w');
-fclose(fid);
+% done_fname = 'done.txt';
+% out_ffname = fullfile(trg, done_fname);
+% fid = fopen(out_ffname, 'w');
+% fclose(fid);
 
 
 

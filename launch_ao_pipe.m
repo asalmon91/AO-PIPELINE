@@ -1,9 +1,10 @@
 % Launch PIPE
 % Imports, and initializes GUI
 
-m = msgbox('Initializing the AOSLO pipeline', 'Initializing', 'help');
+wb = waitbar(0, 'Initializing the AOSLO pipeline');
 addpath(genpath('classes'), genpath('mods'), genpath('lib'));
 pipe_progress_App;
-if isvalid(m)
-    close(m);
+if isvalid(wb)
+    close(wb);
 end
+clear wb;

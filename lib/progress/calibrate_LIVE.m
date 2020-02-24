@@ -1,4 +1,4 @@
-function [ld, pff] = calibrate_LIVE(ld, paths, pff, pool_id)
+function [ld, pff] = calibrate_LIVE(ld, paths, pff, pool_id, gui)
 %calibrate_LIVE basic handling of queue and evaluation
 
 %% Return if empty
@@ -15,6 +15,7 @@ if strcmp(pff.State, 'unavailable')
         ld.cal.dsin(ld.cal.current_idx).processing = true;
         pff = parfeval(pool_id, @construct_dsin_mat, ...
             1, ld.cal.dsin(ld.cal.current_idx), paths.cal);
+        update_pipe_progress(ld,paths,'cal',gui);
     end
 end
 
@@ -28,6 +29,7 @@ if strcmp(pff.State, 'finished') && isempty(pff.Error)
     end
     % Reset future object
     pff = parallel.FevalFuture();
+    update_pipe_progress(ld,paths,'cal',gui);
 elseif ~isempty(pff.Error)
     % TODO: handle error
     error(pff.Error)

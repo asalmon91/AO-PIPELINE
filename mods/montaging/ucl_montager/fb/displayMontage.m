@@ -1,11 +1,10 @@
-function gui_handles = displayMontage(ld, gui_handles)
+function gui_handles = displayMontage(ld, gui_handles, gui)
 %quickDisplayMontage a quick glance at the montage (as one layer)
 % todo: enable visualization of other modalities and wavelengths
 
 %% Inputs
-% May need to change this to updating axes if it's contained within a GUI
 if exist('gui_handles', 'var') == 0 || isempty(gui_handles)
-    [~, gui_handles] = montage_display(ld.mon.opts.mods,1);
+    gui_handles = montage_display_App(gui.mod_order_uit.Data);
 end
 
 %% Constants
@@ -15,9 +14,9 @@ BUFF_PX = 50; % buffer pixels between disjoints
 %% Shortcut
 montages = ld.mon.montages;
 
-%% Insert code for switching modalities/wavelength here
-mods = get(gui_handles.mod_list, 'string');
-disp_mod = mods{get(gui_handles.mod_list, 'value')};
+%% Switching channels
+% mods = get(gui_handles.modality_dd, 'Items');
+disp_mod = get(gui_handles.modality_dd, 'Value');
 % Replace modality string for disp_mod
 default_mod = 'confocal'; % todo: if confocal is not collected, this will break.
 % this is very rare, so we can leave it for now
@@ -133,7 +132,7 @@ end
 
 % Display
 imshow(canvas, 'border', 'tight', 'parent', gui_handles.montage_ax);
-drawnow();
+set(gui_handles.montage_ax, 'backgroundcolor', [0,0,0]);
 
 end
 
