@@ -10,13 +10,14 @@ classdef vidset
         hasCal logical      = false;
         hasAllMods logical  = false;
         % clock arrays for profiling
-        t_proc_create double = [];
-        t_proc_start double = [];
-        t_proc_end double = [];
-        t_proc_read double = [];
-        t_proc_dsind double = [];
-        t_proc_arfs double = [];
-        t_proc_ra double = [];
+        t_proc_create double    = [];
+        t_proc_start double     = [];
+        t_proc_end double       = [];
+        t_proc_read double      = [];
+        t_proc_dsind double     = [];
+        t_proc_arfs double      = [];
+        t_proc_ra double        = [];
+        t_proc_mon double       = [];
     end
     
     methods
