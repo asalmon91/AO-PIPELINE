@@ -41,7 +41,7 @@ for n=1:N
     else
         for m = 1:MN
             if ~isempty(imageFilename{m,n}) % If this file is blank, then that means we don't have valid information for it- skip it.
-                im = imresize( im2single(imread(char(imageFilename{m,n})) ), pixelScale(n), 'bicubic');
+                im = imresize( im2single(imread(char(imageFilename{m,n})) ), pixelScale(n),'bilinear');
                 if(featureType == 0)
                     [f1,d1] = vl_sift(im(:,:,1),'Levels',SiftLevel);
                 elseif(featureType == 1)
@@ -55,8 +55,7 @@ for n=1:N
             end
         end
     end
-%     waitbar(n/(N),h,['Calculating ' FeatureName ' Features (' num2str(100*n/N,3) '%)']);
-    fprintf('Calculating %s Features %1.2f%s\n', FeatureName, n/N*100, '%');
+    waitbar(n/(N),h,['Calculating ' FeatureName ' Features (' num2str(100*n/N,3) '%)']);
 end
 
 

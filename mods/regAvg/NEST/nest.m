@@ -16,10 +16,13 @@ else
 end
 
 %% Ensure double
+% The entropy measurement actually automatically downsamples to 8-bit, so
+% it might not make sense to ensure double
 if ~isa(img, 'double')
     if isa(img, 'uint8')
         img = im2double(img);
-    elseif isa(img, 'single')
+    elseif isa(img, 'single') || (isa(img, 'gpuArray') && ...
+            ~strcmp(classUnderlying(img), 'double'))
         img = double(img);
     end
 end
@@ -90,8 +93,12 @@ end
 
 %% Parabolic increase in cost scaled by range of autocorrelation
 autocorr = getACC(img);
+autocorr = autocorr(ncols:end-ncols, ncols:end-ncols);
 max_corr_diff = range(autocorr(:));
-m = max_corr_diff/((size(img,1)/2)^2);
+if isa(max_corr_diff, 'gpuArray')
+    max_corr_diff = gather(max_corr_diff);
+end
+m = max_corr_diff/((size(img,1)/3)^2);
 cost_fx = @(x) m.*(x.^2);
 
 %% Apply Cost function
@@ -116,7 +123,7 @@ fy = fx_sqrt_sqr(fx);
 %% Find strip size that minimizes objective function
 lps = fx(fy==min(fy));
 
-%% Find minimum uniqueness
+%% Find typical uniqueness
 max_nccs = zeros(size(ss));
 for ii=1:n_candidates
     max_nccs(ii) = max(all_nccs(all_ss == ss(ii)));

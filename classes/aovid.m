@@ -56,9 +56,36 @@ classdef aovid
                 obj.wavelength = str2double(wl_string);
             end
         end
+        
         function obj = updateReady(obj, in_path)
             %updateReady checks if this video is available for processing
             obj.ready = isReadable(in_path, obj.filename);
+        end
+        
+        function dmb_list = getAllDMBs(obj)
+            % Determine # for pre-allocation
+            n_dmbs = 0;
+            for ii=1:numel(obj.fids)
+                for jj=1:numel(obj.fids(ii).cluster)
+                    if isfield(obj.fids(ii).cluster(jj), 'success') && ...
+                            obj.fids(ii).cluster(jj).success
+                        n_dmbs = n_dmbs+1;
+                    end
+                end
+            end
+            
+            % Pre-allocate and populate
+            dmb_list = cell(n_dmbs, 1);
+            k=0;
+            for ii=1:numel(obj.fids)
+                for jj=1:numel(obj.fids(ii).cluster)
+                    if isfield(obj.fids(ii).cluster(jj), 'success') && ...
+                            obj.fids(ii).cluster(jj).success
+                        k=k+1;
+                        dmb_list{k} = obj.fids(ii).cluster(jj).dmb_fname;
+                    end
+                end
+            end
         end
     end
 end

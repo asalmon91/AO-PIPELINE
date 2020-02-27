@@ -5,7 +5,11 @@ load(live_data_file, 'live_data')
 root_path = fileparts(live_data_file);
 paths = initPaths(root_path);
 
-proc_times = zeros(numel(live_data.vid.vid_set), 5);
+% Get number of processing time fields
+fn = fieldnames(live_data.vid.vid_set(1));
+fn(~contains(fn, 't_proc')) = [];
+
+proc_times = zeros(numel(live_data.vid.vid_set), 2+numel(fn));
 for ii=1:numel(live_data.vid.vid_set)
     % Get time of creation of a video in this set
     vid_ffname = fullfile(paths.raw, live_data.vid.vid_set(ii).vids(1).filename);
@@ -25,17 +29,24 @@ for ii=1:numel(live_data.vid.vid_set)
     % Get time processing started
     proc_times(ii,4) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_start));
     
+    % Get intermediary processing times
+    proc_times(ii,5) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_read));
+    proc_times(ii,6) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_dsind));
+    proc_times(ii,7) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_arfs));
+    proc_times(ii,8) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_ra));
+    proc_times(ii,9) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_end));
+    proc_times(ii,10) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_mon));
+    
     % Get time processing ended
-    proc_times(ii,5) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_end));
     
     % Subtract all by creation time
-    proc_times(ii, :) = proc_times(ii, :) - proc_times(ii, 1);
+    proc_times(ii, :) = proc_times(ii, :) - proc_times(ii, 3);
 end
 
 figure; plot(proc_times', 'k')
 set(gca, ...
     'XTick', 1:size(proc_times,2), ...
-    'XTickLabel', {'Created', 'Detected', 'Written', 'Started', 'Ended'}, ...
+    'XTickLabel', {'Created', 'Detected', 'Written', 'Started', 'Read', 'Desinusoided', 'ARFS', 'Demotion', 'R/A', 'Montaged'}, ...
     'XTickLabelRotation', 30);
 xlabel('Processing Stage');
 ylabel('Time (s)');

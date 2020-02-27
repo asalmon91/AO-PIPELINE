@@ -1,6 +1,45 @@
-function update_pipe_progress(live_data, paths, module, gui)
+function update_pipe_progress(live_data, paths, module, gui, in_obj)
 %update_pipe_progress Updates a module of a pipe_progress_App object
 
+%% Check for input from full pipeline
+if exist('in_obj', 'var') ~= 0 && ~isempty(in_obj)
+    if isa(in_obj, 'dsin')
+        module = 'cal';
+        % Find and replace the existing dsin with the input object
+        dsin_found = false;
+        for ii=1:numel(live_data.cal.dsin)
+            if strcmp(live_data.cal.dsin(ii).filename, in_obj.filename)
+                dsin_found = true;
+                live_data.cal.dsin(ii) = in_obj;
+                break;
+            end
+        end
+        if ~dsin_found
+            live_data.cal.dsin = vertcat(live_data.cal.dsin, in_obj);
+        end
+        
+    elseif isa(in_obj, 'vidset')
+        module = 'vid';
+        vidset_found = false;
+        for ii=1:numel(live_data.vid.vid_set)
+            if in_obj.vidnum == live_data.vid.vid_set(ii).vidnum
+                vidset_found = true;
+                live_data.vid.vid_set(ii) = in_obj;
+                break;
+            end
+        end
+        if ~vidset_found
+            live_data.vid.vid_set = vertcat(live_data.vid.vid_set, in_obj);
+        end
+        
+    else % Montage (todo: make a montage object for pete's sake)
+        
+        
+        
+    end
+end
+
+%% Input from full and live pipeline
 switch module
     case 'cal'
         % Update path text
@@ -94,9 +133,13 @@ switch module
         for ii=1:numel(live_data.vid.vid_set)
             out_data{ii, num_idx} = sprintf('%i', ...
                 live_data.vid.vid_set(ii).vidnum);
+            
+            if live_data.vid.vid_set(ii).hasAllOutMods
+                done_cells(ii, mod_idx) = true;
+            end
+            
             % todo: will need to modify once the full-loop is done
             if live_data.vid.vid_set(ii).processed
-                done_cells(ii, mod_idx) = true;
                 done_cells(ii, ra_idx)  = true;
                 % Determine if this video produced an image that is included in
                 % the montage
@@ -106,7 +149,7 @@ switch module
                         for mm=1:numel(live_data.vid.vid_set(ii).vids(jj).fids(kk).cluster)
                             key = findImageInMonDB(live_data, ...
                                 live_data.vid.vid_set(ii).vids(jj).fids(kk).cluster(mm).out_fnames(1));
-                            if ~isempty(key)
+                            if ~all(key == 0)
                                 found_in_montage = true;
                                 break;
                             end

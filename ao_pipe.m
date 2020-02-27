@@ -85,54 +85,114 @@ end
 % todo: figure out how to allow multiple threads for videos, at that point,
 % the queue/afterEach/send procedure may be useful
 % afterEach(q_c, @(x) update_pipe_progress(x, paths, 'cal', gui));
-% afterEach(q_v, @(x) updateUIT(x, 'vid'));
-% afterEach(q_m, @(x) updateUIT(x, 'mon'));
+% afterEach(q_v, @(x) update_pipe_progress(x, paths, 'vid', gui));
+% afterEach(q_m, @(x) update_pipe_progress(x, paths, 'mon', gui));
 
 %% LIVE LOOP
-while ~live_data.done
+while ~live_data.done && gui.run_live
     %% Calibration Loop
-    [live_data, pff_cal] = calibrate_LIVE(live_data, paths, pff_cal, cpool, gui);
-    checkFutureError(pff_cal)
+    [live_data, pff_cal] = calibrate_LIVE(...
+        live_data, paths, pff_cal, cpool, gui);
     
     %% Registration/Averaging
-    [live_data, pff_vid] = ra_LIVE(live_data, paths, sys_opts, pff_vid, cpool, gui);
-    checkFutureError(pff_cal)
+    [live_data, pff_vid] = ra_LIVE(...
+        live_data, paths, sys_opts, pff_vid, cpool, gui);
     
     %% Montaging
-    [live_data, pff_mon, paths] = montage_LIVE(live_data, paths, sys_opts, pff_mon, cpool, gui);
-    checkFutureError(pff_mon)
+    [live_data, pff_mon, paths] = montage_LIVE(...
+        live_data, paths, sys_opts, pff_mon, cpool, gui);
     
     %% Update live database
     live_data = updateLIVE(paths, live_data, sys_opts, gui, mon_app);
+    if ~isvalid(gui) || gui.quitting
+        return;
+    end
+    
+    %% Update GUI
+    uiwait(gui.fig, 1)
 end
 
-return;
+% =========================================================================
+% END OF LIVE PIPELINE
+% =========================================================================
 
-%% Finish live
-close all force;
-% todo: deal with figure handle for GUI and progress table
+%% Check FULL preference
+if ~gui.start_full
+    return;
+end
 
 %% FULL LOOP
-pipe_data = live_data;
 clear live_data;
 
-%% Calibration
-% Should be pretty simple, just make all the desinusoid files
-pipe_data = calibrate_FULL(pipe_data, paths, cpool);
+%% Set up a new parallel pool (supercluster if possible)
+% addpath(fullfile(matlabroot, 'toolbox', 'local'));
 
-%% Videos - Secondaries, Registration/Averaging, EMR
-pipe_data = process_vids_FULL(pipe_data, paths, cpool);
+%% Set up queues for sending updates in a parfor
+[pff, q] = initQueues();
 
-%% Montaging
-% vl_setup;
-% vl_version verbose
-% Call Penn automontager
-% Find breaks, re-process videos, re-montage
+for ii=1:numel(gui.root_path_list)
+    %% Init paths
+    paths = initPaths(gui.root_path_list{ii});
+    paths.out = fullfile(paths.pro, 'FULL');
+    
+    %% Load live data if it exists
+    [pipe_data, opts] = load_live_session(paths.root);
+    pipe_data.filename = 'AO_PIPE_FULL.mat';
+    % Update options
+    opts.mod_order      = gui.mod_order_uit.Data(:,1)';
+    opts.lambda_order   = cell2mat(cellfun(@str2double, ...
+        gui.mod_order_uit.Data(:,2)', 'uniformoutput', false));
+    save(fullfile(paths.root, db.filename), 'pipe_data', 'opts')
+    
+    % Get arfs parameters
+    search = subdir('pcc_thresholds.txt');
+    if numel(search) == 1
+        opts.pcc_thrs = ...
+            single(getPccThr(search.name, opts.mod_order));
+    else
+        warning('PCC thresholds not found for ARFS, using defaults');
+        opts.pcc_thrs = ones(size(sys_opts.mod_order)).*0.01;
+    end
 
-%% Analysis
-% Estimate spacing for whole montage, highest density used as 0,0
-% Extract ROIs outward from 0,0
-% Run CNN cone counts on these ROIs
+    %% Calibration
+    afterEach(q, @(x) update_pipe_progress(pipe_data, paths, 'cal', gui, x))
+    pipe_data = calibrate_FULL(pipe_data, paths, opts, q, gui);
+    save(fullfile(paths.root, db.filename), 'pipe_data')
+    uiwait(gui.fig, 1);
+    
+    %% Videos - Secondaries, Registration/Averaging, EMR
+    pipe_data = process_vids_FULL(pipe_data, paths, opts, q, gui);
+    uiwait(gui.fig, 1);
+
+    %% Montaging
+    vl_setup;
+    % vl_version verbose
+    % Get position file
+    paths.mon_out = fullfile(paths.mon, 'FULL');
+    if exist(paths.mon_out, 'dir') == 0
+        mkdir(paths.mon_out);
+    end
+    loc_search = find_AO_location_file(paths.root);
+    [loc_folder, loc_name, loc_ext] = fileparts(loc_search.name);
+    loc_data = processLocFile(loc_folder, [loc_name, loc_ext]);
+    [out_ffname, ~, ok] = fx_fix2am(loc_search.name, ...
+                    'human', 'penn', pipe_data.cal.dsin, [], ...
+                    pipe_data.id, pipe_data.date, pipe_data.eye, paths.mon);
+    
+    % Call Penn automontager
+    txfm_type   = 1; % Rigid
+    append      = false;
+    featureType = 0; % SIFT
+    exportToPS  = false;
+    montage_file = AOMosiacAllMultiModal(paths.out, out_ffname{1}, ...
+        paths.mon_out, 'multi_modal', opts.mod_order', txfm_type, ...
+        append, [], exportToPS, featureType)
+    
+    %% Analysis
+    % Estimate spacing for whole montage, highest density used as 0,0
+    % Extract ROIs outward from 0,0
+    % Run CNN cone counts on these ROIs
+end
 
 end
 

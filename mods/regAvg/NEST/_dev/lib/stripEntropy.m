@@ -17,12 +17,11 @@ function [entropyVector, ub] = stripEntropy(img, strip_size)
 % Set up strip boundaries
 lb = strip_size:size(img,1);
 ub = lb-strip_size+1;
-entropyVector = zeros(size(lb));
+entropyVector = zeros(size(lb), class(img));
 
 % figure;
 % tic
 for ii=1:numel(ub)
-
     entropyVector(ii) = entropy(img(ub(ii):lb(ii), :));
     
 % %     Display
@@ -39,6 +38,10 @@ for ii=1:numel(ub)
 %     xlabel('Entropy');
 %     ylabel('Row (px)');
 %     drawnow;
+end
+
+if isa(entropyVector, 'gpuArray')
+    entropyVector = gather(entropyVector);
 end
 % toc
 

@@ -28,12 +28,13 @@ this_vidset.t_proc_read = clock;
 
 %% Desinusoid
 %todo: Make function apply dsin
-dsin_vid = gpuArray(zeros(size(vid,1), size(this_dsin.mat, 1), ...
-    size(vid, 3), 'single'));
-for ii=1:size(vid, 3)
-    dsin_vid(:,:,ii) = vid(:,:,ii) * this_dsin.mat';
-end
-vid = dsin_vid; clear dsin_vid;
+vid = desinusoidVideo(vid, this_dsin.mat);
+% dsin_vid = gpuArray(zeros(size(vid,1), size(this_dsin.mat, 1), ...
+%     size(vid, 3), 'single'));
+% for ii=1:size(vid, 3)
+%     dsin_vid(:,:,ii) = vid(:,:,ii) * this_dsin.mat';
+% end
+% vid = dsin_vid; clear dsin_vid;
 this_vidset.t_proc_dsind = clock;
 
 %% Select reference frames

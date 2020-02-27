@@ -1,6 +1,11 @@
-function fids = quickSR(vid, vid_num, fids, this_dsin, paths, ...
+function [fids, success] = quickSR(vid, vid_num, fids, this_dsin, paths, ...
     prime_fname, sec_fnames)
 %quickSR quick Strip-registration
+
+%% Definitions
+success_crit    = 1/2 * size(vid,1);
+short_circuit   = 1/3 * size(vid,1);
+last_height     = 0;
 
 %% Create video readers for secondaries
 vr_sec = cell(size(sec_fnames));
@@ -43,30 +48,60 @@ for ii=1:numel(fids)
         %% Create batch
         % Construct secondary filename string
         sec_fname_str = strjoin(sec_fnames, ', ');
-        [~, dmb_fname, status, stdout] = deploy_createDmb(...
-            'C:\Python27\python.exe', ...
-            fullfile(tmp_path, prime_fname), ...
-            'lps', 25, 'lbss', 10, 'ncc_thr', 0.1, ...
-            'secondVidFnames', sec_fname_str, ...
-            'ffrMinFrames', 3, ...
-            'srMinFrames', 3, ...
-            'ffrSaveSeq', false, ...
-            'srSaveSeq', false, ...
-            'appendText', append_text);
         
-        %% Run DeMotion
-        [status, stdout] = deploy_callDemotion(...
-            'C:\Python27\python.exe', ...
-            tmp_path, dmb_fname);
-        
-        %% Get output
-        img_path = fullfile(tmp_path, '..', 'Processed', 'SR_TIFs');
-        img_dir = dir(fullfile(img_path, '*.tif'));
-        img_fnames = {img_dir.name}';
-        % todo: include support for other wavelengths and primary
-        % modalities
-        [~,prime_name] = fileparts(prime_fname);
-        out_fnames = img_fnames{contains(img_fnames, prime_name)};
+        % Setup defaults
+        success = false;
+        lps     = 25;
+        lbss    = 10;
+        ncc_thr = 0.1;
+        while ~success
+            [~, dmb_fname, status, stdout] = deploy_createDmb(...
+                'C:\Python27\python.exe', ...
+                fullfile(tmp_path, prime_fname), ...
+                'lps', lps, 'lbss', lbss, 'ncc_thr', ncc_thr, ...
+                'secondVidFnames', sec_fname_str, ...
+                'ffrMinFrames', 3, ...
+                'srMinFrames', 3, ...
+                'ffrSaveSeq', false, ...
+                'srSaveSeq', false, ...
+                'appendText', append_text);
+
+            %% Run DeMotion
+            [status, stdout] = deploy_callDemotion(...
+                'C:\Python27\python.exe', ...
+                tmp_path, dmb_fname);
+
+            %% Get output
+            img_path = fullfile(tmp_path, '..', 'Processed', 'SR_TIFs');
+            img_dir = dir(fullfile(img_path, '*.tif'));
+            img_fnames = {img_dir.name}';
+            % todo: include support for other wavelengths and primary
+            % modalities
+            [~,prime_name] = fileparts(prime_fname);
+            out_fnames = img_fnames{contains(img_fnames, prime_name)};
+
+            %% Demotion Feedback
+            im_data = imfinfo(fullfile(img_path, img_fnames{1}));
+            if im_data.Height >= success_crit
+                success = true;
+            else
+                % Check to see if this at least helped
+                if im_data.Height > last_height
+                    % it may be helping. try again
+                    last_height = im_data.Height;
+                    lps = lps*2;
+                end
+                if lps > short_circuit || im_data.Height < last_height
+                    % Don't keep beating a dead horse
+                    break;
+                else
+                    % We'll be trying again, so hide the failures
+                    for ff=1:numel(img_fnames)
+                        sequesterFails(img_dir(1).folder, img_fnames{ff})
+                    end
+                end
+            end
+        end
         
         %% After demotion, create split and average images
         if numel(find(contains(img_fnames, 'direct'))) == 1 && ...

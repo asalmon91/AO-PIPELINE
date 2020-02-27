@@ -21,12 +21,12 @@ end
 [nRows2, nCols2, nStrips] = size(img2);
 
 % pad image 1
-pad1 = zeros(nRows1+nRows2-1, nCols1+nCols2-1);
-pad2 = zeros(nRows1+nRows2-1, nCols1+nCols2-1);
+pad1 = zeros(nRows1+nRows2-1, nCols1+nCols2-1, class(img1));
+pad2 = zeros(nRows1+nRows2-1, nCols1+nCols2-1, class(img1));
 pad1(1:nRows1, 1:nCols1) = img1;
 
 % normalization
-pupilImg1 = zeros(size(pad1));
+pupilImg1 = zeros(size(pad1), class(img1));
 pupilImg2 = pupilImg1;
 pupilImg1(1:nRows1, 1:nCols1)     = 1;
 pupilImg2(nRows1:end, nCols1:end) = 1;
@@ -54,7 +54,11 @@ for ii=1:nStrips
     
     % Cropping
     ncc = ncc(cropRows:end-cropRows, cropCols:end-cropCols);
-    nccs(ii) = max(ncc(:));
+    max_ncc = max(ncc(:));
+    if isa(max_ncc, 'gpuArray')
+        max_ncc = gather(max_ncc);
+    end
+    nccs(ii) = max_ncc;
 end
 
 end

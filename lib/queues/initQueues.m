@@ -1,6 +1,8 @@
 function [cal_future, cq, vid_future, vq, montage_future, mq] = ...
     initQueues()
 %initQueues Create queues based on the number of cores available
+% todo: figure it out, probably could have one input which is how many sets
+% of future and queue objects you want to output
 
 %% Create parfeval future output objects
 cal_future      = parallel.FevalFuture;

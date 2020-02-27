@@ -16,7 +16,7 @@ end
 live_data = updateMontageDB(live_data, paths, gui, montage_app);
 
 % Update session completion
-if ~live_data.done
+if isvalid(gui) && ~live_data.done
     live_data.done = gui.finished;
 end
 

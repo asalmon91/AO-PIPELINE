@@ -75,11 +75,37 @@ if strcmp(pff.State, 'finished') && isempty(pff.Error)
             warning(stdout);
             warning('The automontager failed; retrying. If this keeps happening, restart the pipeline');
             
-            % Should identify if there are
-            
             rmdir(paths.tmp_mon, 's');
             pff = parallel.FevalFuture();
             return;
+        end
+        
+        %% For profiling
+        % Sorry about this horrible mess. This section can be removed if
+        % profiling is not needed
+        for ii=1:numel(ld.vid.vid_set)
+            if isempty(ld.vid.vid_set(ii).t_proc_mon)
+                found_in_montage = false;
+                for jj=1:numel(ld.vid.vid_set(ii).vids)
+                    if found_in_montage
+                        break
+                    end
+                    for kk=1:numel(ld.vid.vid_set(ii).vids(jj).fids)
+                        if found_in_montage
+                            break
+                        end
+                        for mm=1:numel(ld.vid.vid_set(ii).vids(jj).fids(kk).cluster)
+                            key = findImageInMonDB(ld, ...
+                                ld.vid.vid_set(ii).vids(jj).fids(kk).cluster(mm).out_fnames(1));
+                            if ~all(key==0)
+                                found_in_montage = true;
+                                ld.vid.vid_set(ii).t_proc_mon = clock;
+                                break
+                            end
+                        end
+                    end
+                end
+            end
         end
         
         %% Parse the montage file
