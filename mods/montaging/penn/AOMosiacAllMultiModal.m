@@ -1,4 +1,4 @@
-function  [outNameList, imageFilename, TotalTransform, f_all, d_all] = AOMosiacAllMultiModal(imageDir, posFileLoc, outputDir, device_mode, ModalitiesSrchStrings,TransType,AppendToExisting,MontageSave,export_to_pshop,featureType)
+function [outNameList, imageFilename, TotalTransform, f_all, d_all] = AOMosiacAllMultiModal(imageDir, posFileLoc, outputDir, device_mode, ModalitiesSrchStrings,TransType,AppendToExisting,MontageSave,export_to_pshop,featureType)
 %Main AO Montaging Function that creates a full montage from an input
 %directory with images and nominal coordinate location
 %Inputs:
@@ -30,6 +30,7 @@ function  [outNameList, imageFilename, TotalTransform, f_all, d_all] = AOMosiacA
 %
 %Written by Min Chen (minchen1@upenn.edu)
 %Edits by Robert F. Cooper (rfcooper@sas.upenn.edu)
+%Modified:AES:2020.03.01:functionalized for use with AO-PIPE
 
 tic
 %Load Data
@@ -174,9 +175,10 @@ else
     end
     
 end
-if(parallelFlag)
-    delete(gcp('nocreate'))
-end
+
+% if(parallelFlag)
+%     delete(gcp('nocreate'))
+% end
 
 %Begin Matching
 while (sum(Matched) < N)
@@ -673,8 +675,14 @@ for m = 1:MN
                     if size(im_,3) == 2
                         nonzero = im_(:,:,2)>0;
                         im_ = im_(:,:,1);
-                    else                        
-                        nonzero = im_>0;                            
+                    else
+                        % Warp a binary image as well to keep these pixels
+                        % non-transparent even if they're 0
+                        nonzero = imwarp(ones(size(im)), ...
+                            imref2d(size(im)), tform, ...
+                            'OutputView', imref2d(size(imCombined)));
+                    
+                        %nonzero = im_>0;                            
                     end
                                                 
                     %add to combined image
