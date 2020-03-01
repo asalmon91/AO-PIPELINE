@@ -1,4 +1,4 @@
-function [outputArg1,outputArg2] = montage_FULL(db, paths)
+function db = montage_FULL(db, paths, opts)
 %montage_FULL handles input to the Penn Automontager
 % Sets up the inital montage, and reprocesses videos as necessary
 %
@@ -26,17 +26,19 @@ loc_search = find_AO_location_file(paths.root);
 [out_ffname, ~, ok] = fx_fix2am(loc_search.name, ...
                 'human', 'penn', db.cal.dsin, [], ...
                 db.id, db.date, db.eye, paths.mon);
+if ~ok
+    error('Something went wrong while reading %s', loc_search.name);
+end
 
 % Call Penn automontager
 txfm_type   = 1; % Rigid
 append      = false;
 featureType = 0; % SIFT
 exportToPS  = false;
-montage_file = AOMosiacAllMultiModal(paths.out, out_ffname{1}, ...
+db.montage_file = AOMosiacAllMultiModal(paths.out, out_ffname{1}, ...
     paths.mon_out, 'multi_modal', opts.mod_order', txfm_type, ...
     append, [], exportToPS, featureType);
 
-pause();
 % DEAL WITH BREAKS
 
 

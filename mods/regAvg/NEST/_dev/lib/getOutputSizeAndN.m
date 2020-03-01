@@ -1,19 +1,21 @@
-function [ht, wd, nFrames, nCrop, tif_path, tif_fname] = ...
-    getOutputSizeAndN(out_proc, dmb_fname)
-%getOutputSizeAndN Summary of this function goes here
-%   Detailed explanation goes here
+function [ht, wd, nFrames, nCrop, tif_path, tif_fname, px_cdf, cropErr] = ...
+    getOutputSizeAndN(out_proc, dmb_fname, current_modality)
+%getOutputSizeAndN determines results of demotion
 
-% Find matching output tif
+%% Defaults
+ht = 0;
+wd = 0;
+nFrames = 0;
+nCrop = 0;
+tif_path = '';
+tif_fname = '';
+cropErr = false;
+
+%% Find matching output tif
 [~,dmb_name,~] = fileparts(dmb_fname);
 tif_search = dir(fullfile(out_proc, [dmb_name, '*.tif']));
 if numel(tif_search) == 0
     warning('Something went wrong with %s', dmb_fname);
-    ht = 0;
-    wd = 0;
-    nFrames = 0;
-    nCrop = 0;
-    tif_path = '';
-    tif_fname = '';
     return;
 elseif numel(tif_search) > 1
     tif_dates = [tif_search.datenum]';
@@ -27,11 +29,46 @@ f = imfinfo(fullfile(tif_search.folder, tif_search.name));
 ht = f.Height;
 wd = f.Width;
 
+% Get the number of frames to which the stack was cropped
+% (from the filename)...
 [~,tif_name,~] = fileparts(tif_search.name);
 nameparts = strsplit(tif_name, '_');
+nCrop = str2double(nameparts{find(strcmp(nameparts, 'cropped'))+1});
 
-nFrames = str2double(nameparts{find(strcmp(nameparts, 'n'))+1});
-nCrop   = str2double(nameparts{find(strcmp(nameparts, 'cropped'))+1});
+%% Get # Frames
+% This is trickier because the n listed in the filename is not always
+% accurate. Check to see if the SR_AVI was output, and determine the # of
+% frames that way. Otherwise use the filename and hope for the best
+sr_avi_path = fullfile(out_proc, '..', 'SR_AVIs');
+avi_search = dir(fullfile(sr_avi_path, [dmb_name, '*.avi']));
+if ~isempty(avi_search)
+    if numel(avi_search) > 1
+        % Use most recent one
+        avi_search = avi_search([avi_search.datenum] == max([avi_search.datenum]));
+    end
+    vr = VideoReader(fullfile(avi_search.folder, avi_search.name));
+    nFrames = vr.NumFrames;
+else
+    nFrames = str2double(nameparts{find(strcmp(nameparts, 'n'))+1});
+end
+
+%% Get distribution of pixel averages
+% And check for crop errors
+% Find binary image
+if exist('current_modality', 'var') ~=0 && ~isempty(current_modality)
+    bin_name = strrep(tif_name, current_modality, 'bin');
+    bin_sr_vid = fn_read_AVI(fullfile(sr_avi_path, [bin_name, '.avi']));
+    bin_map = sum(bin_sr_vid, 3)./255;
+    if any(bin_map(:)==0)
+        cropErr = true;
+    end
+    
+    [N,edges] = histcounts(bin_map(:), 0:size(bin_sr_vid,3), ...
+        'normalization', 'cdf');
+    px_cdf = [1-N', edges(1:end-1)'];
+end
+
+
 
 end
 

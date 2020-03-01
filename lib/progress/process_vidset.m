@@ -11,7 +11,7 @@ LBSS            = 6; % lines between strip start
 SR_EXT          = fullfile('Processed', 'SR_TIFs');
 EMR_EXT         = 'Repaired';
 FAIL_CROP       = 1;
-NCC_THR_INC     = 0.1; % Amount by which to reduce ncc_thr
+NCC_THR_INC     = 0.05; % Amount by which to incease ncc_thr after a crop error
 
 
 %% Make output path
@@ -60,7 +60,8 @@ for ii=1:numel(opts.mod_order)
         if strcmp(me.identifier, 'parallel:gpu:array:OOM')
             vid = single(fn_read_AVI(fullfile(paths.raw, prime_fname)));
         end
-    end    
+    end
+    orig_dims = size(vid);
     
     %% Desinusoid
     vid = desinusoidVideo(vid, dsin.mat);
@@ -75,6 +76,12 @@ for ii=1:numel(opts.mod_order)
     %% ARFS
     frames = arfs(vid, 'pcc_thr', opts.pcc_thrs(ii), 'mfpc', 10);
     fids = get_best_n_frames_per_cluster(frames, 1);
+    n_frames = get_n_not_rejected(frames, ...
+        {'rejectSmallGroups'; 'rejectSmallClusters'; 'firstFrame'});
+    if n_frames < opts.n_frames
+        n_frames = opts.n_frames;
+    end
+    % Include frames rejected by motion tracking (not the most robust)
     
     %% Generate an acceptable image from each reference frame
     for jj=1:numel(fids)
@@ -89,19 +96,31 @@ for ii=1:numel(opts.mod_order)
             for mm=1:numel(all_fnames)
                 copyfile(fullfile(paths.raw, all_fnames{mm}), paths.tmp)
             end
+            % Also write a binary video for analytics
+            bin_fname = strrep(prime_fname, opts.mod_order{ii}, 'bin');
+            new_sec_fname_str = [sec_fname_str, ', ',bin_fname];
+            fn_write_AVI(fullfile(paths.tmp, bin_fname), ...
+                ones(orig_dims, 'uint8').*255);
+            % Record path to strip-registered images
             paths.imgs = fullfile(paths.tmp, '..', SR_EXT);
             
             %% NEST
             frame_idx = fids(jj).cluster(kk).fids(1);
-            [lps, thr, candidate_ncc_thr_lut] = nest(gather(vid(:,:,frame_idx)));
+%             [~, ~, candidate_ncc_thr_lut] = nest(gather(vid(:,:,frame_idx)));
             % downsample candidate_ncc_thr_lut to values that may actually be used
-            lps_array = doublePreviousElement(lps, round(dims(1)*SHORT_CIRCUIT));
-            [~,I] = max(lps_array == candidate_ncc_thr_lut(1,:), [], 2);
-            candidate_ncc_thr_lut = single(candidate_ncc_thr_lut(:,I));
+            % Don't use the suggested lps or thr, that's a shortcut
+%             lps_array = doublePreviousElement(6, round(dims(1)*SHORT_CIRCUIT));
+%             [~,I] = max(lps_array == candidate_ncc_thr_lut(1,:), [], 2);
+%             candidate_ncc_thr_lut = single(candidate_ncc_thr_lut(:,I));
+%             lps = candidate_ncc_thr_lut(1,1);
+%             thr = candidate_ncc_thr_lut(2,1);
+%             lps = lps_array(1);
+            lps = 6;
+            thr = 0.1;
             % Add to cluster
             fids(jj).cluster(kk).lps = lps;
             fids(jj).cluster(kk).ncc_thr = thr;
-            fids(jj).cluster(kk).lps_thr_lut = candidate_ncc_thr_lut;
+%             fids(jj).cluster(kk).lps_thr_lut = candidate_ncc_thr_lut;
             
             %% Demotion
             success = false;
@@ -116,36 +135,72 @@ for ii=1:numel(opts.mod_order)
                     fullfile(paths.tmp, prime_fname), ...
                     'cal_full_fname', fullfile(paths.cal, dsin.filename), ...
                     'lps', lps, 'lbss', LBSS, 'ncc_thr', ncc_thr, ...
-                    'secondVidFnames', sec_fname_str, ...
+                    'secondVidFnames', new_sec_fname_str, ...
                     'ref_frame', frame_idx, ...
-                    'srMaxFrames', dims(3), ... % Try all frames
-                    'ffrMaxFrames', dims(3), ...
+                    'srMaxFrames', n_frames, ...
+                    'ffrMaxFrames', 3, ...
                     'ffrMinFrames', 3, ...
-                    'srMinFrames', 3, ...
+                    'srMinFrames',  3, ...
                     'ffrSaveSeq', false, ...
                     'srSaveSeq', true, ... % todo: set to false if speed is a concern
                     'appendText', append_text);
-                dmp_fname = strrep(dmb_fname, '.dmb', '.dmp');
                 if status
                     error(stdout);
                 end
                 
-                % Call DeMotion
+                %% Call DeMotion Motion Estimation
                 [status, stdout] = deploy_callDemotion(...
                     'C:\Python27\python.exe', ...
-                    paths.tmp, dmb_fname);
+                    paths.tmp, dmb_fname, false);
                 if status
                     error(stdout);
+                end
+                dmp_fname = strrep(dmb_fname, '.dmb', '.dmp');
+                
+                %% Measure NCC distribution and calculate threshold
+                ncc_thr = getNewStripThreshold(...
+                    fullfile(paths.tmp, dmp_fname), false, ncc_thr);
+                % Keep adjusting ncc_thr until there are no crop errors
+                cropErr = true;
+                while cropErr
+                    % todo: this seems stupid. Should probably make a
+                    % separate function for analyzing crop errors and the
+                    % pixel cdf
+                    [status, stdout] = deploy_reprocess(...
+                        fullfile(paths.tmp, dmp_fname), ncc_thr);
+                    if status ~= 1
+                        % Error handling will be managed below
+                        break;
+                    end
+                    [~,~,~,~,~,~,~,cropErr] = ...
+                        getOutputSizeAndN(paths.imgs, dmb_fname, opts.mod_order{ii});
+                    if cropErr
+                        ncc_thr = ncc_thr + NCC_THR_INC;
+                        % Eventually it will either get rid of the crop
+                        % error or fail completely, at which point raising
+                        % the strip size is the right move
+                    end
                 end
                 
                 %% DeMotion feedback
                 % Get output parameters
-                [ht, ~, nFrames, nCrop, ~, tif_fname] = ...
-                    getOutputSizeAndN(paths.imgs, dmb_fname);
-                tif_fnames = strrep(tif_fname, opts.mod_order{ii}, mods);
+                if status == 1
+                    [ht, ~, nFrames, nCrop, ~, tif_fname] = ...
+                        getOutputSizeAndN(paths.imgs, dmb_fname);
+                    tif_fnames = strrep(tif_fname, opts.mod_order{ii}, mods);
+                    % todo: manage success criteria better
+                    % 80% of pixels are an average of this many frames
+                    %f80 = px_cdf(find(px_cdf(:,1)>0.8, 1, 'last'), 2);
+                else
+                    warning(stdout);
+                    ht = 0; nCrop = 0; nFrames = 0;
+                end
                 
                 % Check against criteria
-                if ht >= FAIL_HT && nCrop > FAIL_CROP && nFrames > opts.n_frames
+                if ht >= FAIL_HT && nCrop > FAIL_CROP && ...
+                        nFrames > opts.n_frames %&& ~cropErr %&& ...
+                        %f80 > opts.n_frames
+                        
                     % Success!
                     success = true;
                     fids(jj).cluster(kk).success = true;
@@ -177,31 +232,24 @@ for ii=1:numel(opts.mod_order)
                     
                     
                 else % Failure
-                    if nFrames == 1 || nCrop == 1
-                        % typically when this happens, it's because the
-                        % ncc_thr is too high, lower and try again
-                        fids(jj).cluster(kk).ncc_thr = ncc_thr - NCC_THR_INC;
-                        
+                    % 2x strip size and try again
+                    lps = SS_FB_FX(lps);
+                    lps = lps*2;
+                    thr = 0.1;
+                    % Unless this strip size is too big
+                    if lps > round(dims(1)*SHORT_CIRCUIT)
+                        % Admit defeat
+                        fids(jj).cluster(kk).success = false;
+                        break;
                     else
-                        % Something's probably working, lps is probably
-                        % too small
-                        this_idx = find(candidate_ncc_thr_lut(1,:) == lps);
-                        if this_idx == size(candidate_ncc_thr_lut,2)
-                            % Admit defeat
-                            fids(jj).cluster(kk).success = false;
-                            break;
-                        else
-                            % Update lps and ncc thr
-                            lps = candidate_ncc_thr_lut(1, this_idx+1);
-                            thr = candidate_ncc_thr_lut(2, this_idx+1);
-                            fids(jj).cluster(kk).lps     = lps;
-                            fids(jj).cluster(kk).ncc_thr = thr;
-                        end
+                        % Update lps and ncc thr
+                        fids(jj).cluster(kk).lps     = lps;
+                        fids(jj).cluster(kk).ncc_thr = thr;
                     end
                 end
             end % End of DeMotion feedback loop
             %% Remove the temporary folder
-            rmdir(fullfile(paths.tmp, '..'), 's')
+%             rmdir(fullfile(paths.tmp, '..'), 's')
         end % End of this cluster (reference frame)
     end % End of this linked group of frames
     vid_set.vids(ii).fids = fids;

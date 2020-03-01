@@ -1,6 +1,11 @@
 function frame_list = get_best_n_frames_per_cluster(frames, n_per_cluster)
 %getRefFrames Returns the index of the best frame from each cluster
 
+% Reference frame can't be 1 for some reason
+% Probably a 0-based indexing thing
+% todo: create a patch for demotion that fixes this bug
+frames = rejectFrames(frames, 1, 'firstFrame');
+
 link_ids = sortLink_id_bySize(frames);
 % Create structure to contain results from all clusters
 frame_list(numel(link_ids)).lid = link_ids(end);

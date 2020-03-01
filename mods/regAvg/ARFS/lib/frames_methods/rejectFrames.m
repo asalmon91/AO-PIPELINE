@@ -11,5 +11,7 @@ end
 for ii=1:numel(bf)
     data(bf(ii)).rej = true;
     data(bf(ii)).rej_method = method;
+    data(bf(ii)).link_id = 0;
+    data(bf(ii)).cluster = 0;
 end
 end

@@ -49,6 +49,7 @@ if TRACK_MOTION
 else
     frames = updateCluster(frames, [frames.id], ones(numel(frames),1));
 end
+frames = tidyClusters(frames);
 
 % waitbar(1,wb,'Done!');
 

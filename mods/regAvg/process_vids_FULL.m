@@ -10,7 +10,7 @@ afterEach(q, @(x) update_pipe_progress(pipe_data, paths, 'vid', gui, x));
 for ii=1:numel(vid_objs)
     % todo: Someday we want to include a pipeline architecture object that
     % includes all the modules to use for processing and their adapters,
-    % e.g.: MODS:ARFS:NEST:DEMOTION:EMR, but I haven't really started
+    % e.g.: MODS:ARFS:DEMOTION:EMR, but I haven't really started
     % planning how this would be implemented
     vid_objs(ii) = process_vidset(vid_objs(ii), dsin_objs, paths, opts);
     send(q, vid_objs(ii));

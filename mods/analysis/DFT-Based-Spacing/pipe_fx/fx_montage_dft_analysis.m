@@ -65,14 +65,18 @@
 % the confidence montage, and the sum map. It will also save them to disk in the
 % same folder you ran from alongside a mat file that contains the results.
 
-function fx_montage_dft_analysis(in_path, modality, wavelength, do_par)
+function fovea_coords = fx_montage_dft_analysis(in_path, db, modality, wavelength, do_par)
 %fx_montage_dft_analysis
 
 %% Find images and filter by modality and wavelength
 tif_fnames = getSelectedTifs(in_path, modality, wavelength);
 
 %% Get image scale
-[scaling, unit, lut] = determine_scaling(pwd, tif_fnames);
+%[scaling, unit, lut] = determine_scaling(pwd, tif_fnames);
+[~,dsin_idx] = min([db.cal.dsin.fov]);
+scaling = db.cal.dsin(dsin_idx).ppd;
+unit = 'degrees';
+lut = [];
 
 scaling = unique(scaling);
 rel_scale = 1;

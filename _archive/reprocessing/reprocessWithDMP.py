@@ -1,15 +1,11 @@
-# Imports
-import getopt
-import sys
-import os
-import MotionEstimation, CreateRegisteredImages, CreateRegisteredSequences
+import CreateRegisteredImages, CreateRegisteredSequences
 import CUDABatchProcessorToolBag
 import cPickle
 
-argList = ["dmbPath=", "dmbFname=", "output="]
+argList = ["dmpFFname="]
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], 'p:n:o:', argList)
+    opts, args = getopt.getopt(sys.argv[1:], 'p:n:', argList)
     #print opts
     #print args
 except getopt.GetoptError:
@@ -18,31 +14,23 @@ except getopt.GetoptError:
     sys.exit(2)
 for opt, arg in opts:
     # Major parameters ###################
-    if opt in ('-p', "--dmbPath"):
-        dmb_path = arg
-    elif opt in ('-n', "--dmbFname"):
-        dmb_fname = arg
-    elif opt in ('-o', "--output"):
-        if arg == '0':
-            output = False
-        else:
-            output = True
+    if opt in ('-p', "--dmpFFname"):
+        dmp_full_file_name = arg
+    else:
+        print 'unknown input'
 
+# Read .dmp
+#dmp_full_file_name = 'C:\\Users\DevLab_811\\workspace\\pipe_test\\BL_12063\\AO_2_3_SLO\\2019_07_11_OS\\Processed\\FULL\\13_L1C1\\tmp\\BL_12063_775nm_OS_confocal_0013_13_L1C1_ref_1_lps_6_lbss_6.dmp'
+fid = open(dmp_full_file_name, 'r')
+data = cPickle.load(fid)
+fid.close()
 
-# Test constants
-#dmb_fname = 'JC_0616_790nm_OD_confocal_0111_ref_53_lps_20_lbss_10.dmb'
-#dmb_path = 'E:\\datasets\\demotion\\test\\JC_0616-20171222-OD\\Raw\\'
-dmb_ffname = os.path.join(dmb_path, dmb_fname)
+# Re-process
 tool_bag = CUDABatchProcessorToolBag.CUDABatchProcessorToolBag()
-
-# todo figure out how to create a progress bar
-print 'registering ' + dmb_fname
-success, error_msg, data = MotionEstimation.EstimateMotion(dmb_ffname, tool_bag)
 print 'Generating images'
-if output:
-    success, error_msg, data = CreateRegisteredImages.RegisterPrimaryImageSequence(data, tool_bag, None)
-
-if output and success:
+#data['frame_strip_ncc_threshold'] = 0.7
+success, error_msg, data = CreateRegisteredImages.RegisterPrimaryImageSequence(data, tool_bag, None)
+if success:
     n_secondary_sequences = len(data['secondary_sequences_file_names'])
 
     # only performing the movie registration if needed
@@ -135,6 +123,9 @@ if success:
         not_used = data.pop('desinusoid_matrix')
     '''
     # saving data to a file with "Demotion processed" extension (dmp)
-    f = open(dmb_ffname[:len(dmb_ffname) - 1] + 'p', 'w')
+    f = open(dmp_full_file_name, 'w')
     cPickle.dump(data, f)
     f.close()
+
+print success
+print error_msg

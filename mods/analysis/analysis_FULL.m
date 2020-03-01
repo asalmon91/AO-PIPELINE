@@ -1,0 +1,22 @@
+function [outputArg1,outputArg2] = analysis_FULL(db, paths, opts)
+%analysis_FULL estimates the foveal center and a coarse cone spacing
+% Eventually, it will be useful to include a normative-database to
+% determine if there are significant differences at each location and
+% facilitate early detection of cone loss. 
+% todo: handle disease cases like ACHM where cones in the fovea are only
+% visible on split-detector
+% todo: handle cases like squirrel where this won't make any sense
+
+% If the point of this is just to estimate the fovea, could filter the
+% images by proximity to 0,0, perhaps by <2°
+% This step takes a pretty long time, so if it's not going to work 
+fovea_xy = fx_montage_dft_analysis(aligned_tif_path, ...
+    opts.mod_order{1}, opts.lambda_order(1), do_par);
+
+% Get ROIs for actual cone counting
+
+
+
+
+end
+

@@ -18,6 +18,12 @@ for ii=1:numel(fids)
         these_frames = fids(ii).cluster(jj).fids;
         n_frames = numel(these_frames);
         
+        %% Circumvent weird DeMotion bug
+        % If the reference frame is 1, it often screws up. Flip the order
+        % of the frames and set the reference frame to be the last one
+        these_frames = flip(these_frames);
+        ref_frame = n_frames;
+        
         %% Create a temporary folder for writing video snippets
         append_text = sprintf('%i_L%iC%i', vid_num, ...
             fids(ii).lid, fids(ii).cluster(jj).cid);
@@ -39,7 +45,7 @@ for ii=1:numel(fids)
                 % fast as possible
                 writeVideo(vw, ...
                     uint8(single(...
-                    read(vr_sec{mm}, fids(ii).cluster(jj).fids(nn))) * ...
+                    read(vr_sec{mm}, these_frames(nn))) * ...
                     this_dsin.mat'));
             end
             close(vw);
@@ -60,16 +66,23 @@ for ii=1:numel(fids)
                 fullfile(tmp_path, prime_fname), ...
                 'lps', lps, 'lbss', lbss, 'ncc_thr', ncc_thr, ...
                 'secondVidFnames', sec_fname_str, ...
+                'ref_frame', ref_frame, ...
                 'ffrMinFrames', 3, ...
                 'srMinFrames', 3, ...
                 'ffrSaveSeq', false, ...
                 'srSaveSeq', false, ...
                 'appendText', append_text);
+            if status
+                error(stdout);
+            end
 
             %% Run DeMotion
             [status, stdout] = deploy_callDemotion(...
                 'C:\Python27\python.exe', ...
                 tmp_path, dmb_fname);
+            if status
+                error(stdout);
+            end
 
             %% Get output
             img_path = fullfile(tmp_path, '..', 'Processed', 'SR_TIFs');
@@ -133,9 +146,6 @@ for ii=1:numel(fids)
             copyfile(fullfile(img_path, out_fnames{mm}), ...
                 paths.out);
         end
-        
-        %% Write a full-frame set to processed directory
-        
         
         %% Delete temporary path
         rmdir(fullfile(tmp_path, '..'), 's')

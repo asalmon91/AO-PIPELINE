@@ -121,6 +121,7 @@ for thisfile in os.listdir(dmp_folder_path):
             # Fix the fact that it was done originally in Windows...
             pickle_file = open(pickle_path, 'rb')
             text = pickle_file.read().replace('\r\n', '\n')
+            pickle_file.read()
             pickle_file.close()
 
             pickle_file = open(pickle_path, 'wb')
