@@ -35,9 +35,13 @@ overlap = circ_mask & rect_mask;
 coords = uint16([c, r] + dxdy -1); % Shift coords by the earlier crop
 
 % % DEV/DB
-% figure;
-% imshowpair(circ_mask, rect_mask, 'falsecolor', ...
-%     'colorchannels', 'red-cyan');
+figure;
+imshowpair(circ_mask, rect_mask, 'falsecolor', ...
+    'colorchannels', 'red-cyan');
+figure;
+plot(coords(:,1), coords(:,2), '.r');
+set(gca,'ydir','reverse');
+axis equal;
 % % END DEV/DB
 
 

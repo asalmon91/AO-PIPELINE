@@ -13,12 +13,15 @@ if isempty(ld.cal) || ~isfield(ld.cal, 'dsin')
 end
 
 %% Update scaling information
-lpmm = opts.lpmm;
-me_f = opts.me_f_mm*1000; % convert to microns
+% lpmm = opts.lpmm;
+% me_f = opts.me_f_mm*1000; % convert to microns
 for ii=1:numel(ld.cal.dsin)
     if isempty(ld.cal.dsin(ii).ppd) && ld.cal.dsin(ii).processed
-        fringe = ld.cal.dsin(ii).fringe_px;
-        ld.cal.dsin(ii).ppd = 1/(((1000/lpmm)/fringe/me_f)*(180/pi));
+%         fringe = ld.cal.dsin(ii).fringe_px;
+        ld.cal.dsin(ii).me_f_mm = opts.me_f_mm;
+        ld.cal.dsin(ii).lpmm    = opts.lpmm;
+        ld.cal.dsin(ii) = updatePPD(ld.cal.dsin(ii));
+%         ld.cal.dsin(ii).ppd = 1/(((1000/lpmm)/fringe/me_f)*(180/pi));
     end
 end
 

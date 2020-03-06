@@ -681,12 +681,12 @@ for m = 1:MN
                         nonzero = imwarp(ones(size(im)), ...
                             imref2d(size(im)), tform, ...
                             'OutputView', imref2d(size(imCombined)));
-                    
+                        im_(:,:,2) = nonzero;
                         %nonzero = im_>0;                            
                     end
                                                 
                     %add to combined image
-                    imCombined(nonzero) = im_(nonzero);
+                    %imCombined(nonzero) = im_(nonzero);
 
                     %save
                     saveFileName=[name,'_aligned_to_ref',num2str(i),'_m',num2str(m),'.tif'];
@@ -695,7 +695,7 @@ for m = 1:MN
                         im_(:,:,2) = nonzero; 
                         saveTifDouble(single(im_),outputDir,saveFileName);
                     else%else save as uint8
-                        im_(:,:,1) = uint8(round(im_));
+                        im_(:,:,1) = uint8(round(im_(:,:,1)));
                         im_(:,:,2) = uint8(round(nonzero*255)); 
 
                         saveTif(im_,outputDir,saveFileName);
@@ -740,7 +740,7 @@ for m = 1:MN
     saveTif(imCombinedAll,outputDir,saveFileName);
     
 end
-
+close(h)
 runtime=toc
 
 

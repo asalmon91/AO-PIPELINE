@@ -1,4 +1,4 @@
-function [outputArg1,outputArg2] = analysis_FULL(db, paths, opts)
+function [db, paths] = analysis_FULL(db, paths, opts)
 %analysis_FULL estimates the foveal center and a coarse cone spacing
 % Eventually, it will be useful to include a normative-database to
 % determine if there are significant differences at each location and
@@ -10,21 +10,35 @@ function [outputArg1,outputArg2] = analysis_FULL(db, paths, opts)
 % are fully contained within an image (± some tolerance) at regular
 % intervals
 
-% If the point of this is just to estimate the fovea, could filter the
-% images by proximity to 0,0, perhaps by <2°
-% This step takes a pretty long time, so if it's not going to work 
-% todo: figure out what to do if the subject is not human
+%% Set up output
+paths.data = fullfile(paths.root, 'data');
+if exist(paths.data, 'dir') == 0
+    mkdir(paths.data);
+end
 
-%% Estimate spacing, estimate location of foveola
-row_or_cell = 'row'; % Change this to cell if analyzing split images
-db.data.fovea_xy = fx_montage_dft_analysis(aligned_tif_path, ...
-    opts.mod_order{1}, opts.lambda_order(1), do_par, row_or_cell);
+% tic
+%% Quick & Dirty approximation of the peak-cone-density location
+[db.data.fovea_xy, canvas] = estimateFovea(db, paths, opts);
+% toc
+
+% tic
+% do_par = true;
+% row_or_cell = 'row'; % Change this to cell if analyzing split images
+% db.data.fovea_xy = fx_montage_dft_analysis(paths.mon_out, [], ...
+%     db, opts.mod_order{1}, opts.lambda_order(1), do_par, row_or_cell, paths, opts);
+% toc
 
 %% Get ROI's
 rois = getROIs(db, paths, opts);
 
 %% Count these images
-rois = countROIs(db, paths, opts, rois);
+write_rois = true;
+rois = countROIs(db, paths, opts, rois, write_rois);
+db.data.rois = rois;
+
+
+%% Output .map for use with Mosaic
+db.data.maps = outputMAP(db, rois, paths);
 
 
 end

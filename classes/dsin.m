@@ -9,6 +9,7 @@ classdef dsin
         fov {mustBePositive, mustBeFinite} = [];
         wavelength {mustBePositive, mustBeFinite} = 790; %nm
         lpmm {mustBePositive, mustBeFinite} = []; % lines/mm grid spacing
+        me_f_mm {mustBePositive, mustBeFinite} = []; % model eye focal length (mm)
         ppd {mustBePositive, mustBeFinite} = []; % pixels/degree
         mat {mustBeNumeric} = [];
         fringe_px {mustBePositive, mustBeFinite} = [];
@@ -70,6 +71,44 @@ classdef dsin
             obj.fringe_px = dsin_data.horizontal_fringes_fringes_period;
             obj.processed = true;
             obj.processing = false;
+        end
+        
+        %% Setters
+        function obj = set.lpmm(obj, lpmm)
+            % Lines per mm, grid spacing
+            obj.lpmm = lpmm;
+        end
+        
+        function obj = set.me_f_mm(obj, me_f_mm)
+            % Model Eye Focal Length (mm)
+            obj.me_f_mm = me_f_mm;
+        end
+        
+        function obj = set.ppd(obj, ppd)
+            % Pixels per degree
+            obj.ppd = ppd;
+        end
+        
+        %% Getters
+        function lpmm = get.lpmm(obj)
+            % Lines per mm, grid spacing
+            lpmm = obj.lpmm;
+        end
+        
+        function me_f_mm = get.me_f_mm(obj)
+            % Model Eye Focal Length (mm)
+            me_f_mm = obj.me_f_mm;
+        end
+        
+        %% Scaling
+        function obj = updatePPD(obj)
+            if ~obj.processed || isempty(obj.lpmm) || isempty(obj.me_f_mm)
+                warning('Must be processed and have lpmm and me_f_mm');
+                return;
+            end
+            
+            me_f_um = obj.me_f_mm*1000; % convert to microns
+            obj.ppd = 1/(((1000/obj.lpmm)/obj.fringe_px/me_f_um)*(180/pi));
         end
     end
 end

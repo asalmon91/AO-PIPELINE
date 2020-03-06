@@ -27,7 +27,7 @@ if exist('roi_pos_tol', 'var') == 0 || isempty(roi_pos_tol)
 end
 
 %% Generate a 1° ROI grid
-u_loc_xy_deg = unique(round(fixCoordsToMat(db.mon.loc_data.coords)), 'rows');
+u_loc_xy_deg = unique(fix(fixCoordsToMat(db.mon.loc_data.coords)), 'rows');
 % flip y to convert to image-space
 u_loc_xy_deg_img = u_loc_xy_deg;
 u_loc_xy_deg_img(:,2) = u_loc_xy_deg(:,2) *-1;
@@ -160,6 +160,9 @@ for ii=1:n_rois
         % This solution does not take rotation into account, but the
         % rotations are usually minor enough to not impact this problem
         % And it's fast
+        
+        
+        
         [~, roi_ol_amts(ii, jj)] = doOverlap(...
             img_polys(1,:,jj), img_polys(3,:,jj), ...
             this_roi_xy(1,:), this_roi_xy(3,:));
@@ -198,7 +201,7 @@ end
 % toc
 
 %% Normalize overlap amounts to roi size without tolerance
-roi_ol_amts = roi_ol_amts./roi_sz_px^2;
+% roi_ol_amts = roi_ol_amts./roi_sz_px^2;
 
 %% Shift all ROIs to their "best" position
 failed_rois = false(n_rois, 1);
@@ -209,14 +212,14 @@ roi_shifts = zeros(n_rois, 2, 'uint16');
 % Avoid blood vessels
 % Minimize movement from nominal location
 
-% % DEV/DB
+% DEV/DB
 % figure;
 % t = linspace(0,2*pi,50);
-% % END DEV/DB
+% END DEV/DB
 % tic
 for ii=1:n_rois
-    % Determine which images satisfy the total encapsulation criterion
-    ol_idx = find(roi_ol_amts(ii, :) >= 1);
+    % Determine which images could overlap at all
+    ol_idx = find(roi_ol_amts(ii, :) > 0);
     if isempty(ol_idx)
         % No images satisfy this mandatory criterion
         failed_rois(ii) = true;
@@ -227,38 +230,38 @@ for ii=1:n_rois
     
     % Get ROI center and corners
     xy = u_loc_xy_px(ii,:);
-    
-    % % DEV/DB
-    % this_roi_xy = [
-    %     xy(1)-roi_sz_px/2, xy(1)+roi_sz_px/2, xy(1)+roi_sz_px/2, xy(1)-roi_sz_px/2;
-    %     xy(2)-roi_sz_px/2, xy(2)-roi_sz_px/2, xy(2)+roi_sz_px/2, xy(2)+roi_sz_px/2]';
-    % canvas = false(img_info.Height, img_info.Width);
-    % for jj=1:numel(ol_img_fnames)
-    %     im = imread(fullfile(paths.mon_out, ol_img_fnames{jj}));
-    %     canvas = canvas | im(:,:,2) > 0;
-    % end
-    % imshow(canvas);
-    % hold on
-    % plot(xy(1), xy(2), '*r')
-    % patch('xdata', this_roi_xy(:,1), 'ydata', this_roi_xy(:,2), ...
-    %     'facecolor', 'none', 'edgecolor', 'r')
-    % patch(...
-    %     'xdata', (roi_pos_tol).*cos(t) + xy(1), ...
-    %     'ydata', (roi_pos_tol).*sin(t) + xy(2), ...
-    %     'facecolor', 'none', 'edgecolor', 'c')
-    % patch(...
-    %     'xdata', (roi_pos_tol+roi_sz_px/2).*cos(t) + xy(1), ...
-    %     'ydata', (roi_pos_tol+roi_sz_px/2).*sin(t) + xy(2), ...
-    %     'facecolor', 'none', 'edgecolor', 'r', 'linestyle', ':')
-    % % Draw image boundaries
-    % for jj=1:numel(ol_img_fnames)
-    %     patch(...
-    %         'xdata', img_polys(:,1,ol_idx(jj)), ...
-    %         'ydata', img_polys(:,2,ol_idx(jj)), ...
-    %         'facecolor', 'none', 'edgecolor', 'g')
-    % end
-    % hold off;
-    % % END DEV/DB
+    roi_xywh = [xy, roi_sz_px, roi_sz_px];
+%     % DEV/DB
+%     this_roi_xy = [
+%         xy(1)-roi_sz_px/2, xy(1)+roi_sz_px/2, xy(1)+roi_sz_px/2, xy(1)-roi_sz_px/2;
+%         xy(2)-roi_sz_px/2, xy(2)-roi_sz_px/2, xy(2)+roi_sz_px/2, xy(2)+roi_sz_px/2]';
+%     canvas = false(img_info.Height, img_info.Width);
+%     for jj=1:numel(ol_img_fnames)
+%         im = imread(fullfile(paths.mon_out, ol_img_fnames{jj}));
+%         canvas = canvas | im(:,:,2) > 0;
+%     end
+%     imshow(canvas);
+%     hold on
+%     plot(xy(1), xy(2), '*r')
+%     patch('xdata', this_roi_xy(:,1), 'ydata', this_roi_xy(:,2), ...
+%         'facecolor', 'none', 'edgecolor', 'r')
+%     patch(...
+%         'xdata', (roi_pos_tol).*cos(t) + xy(1), ...
+%         'ydata', (roi_pos_tol).*sin(t) + xy(2), ...
+%         'facecolor', 'none', 'edgecolor', 'c')
+%     patch(...
+%         'xdata', (roi_pos_tol+roi_sz_px/2).*cos(t) + xy(1), ...
+%         'ydata', (roi_pos_tol+roi_sz_px/2).*sin(t) + xy(2), ...
+%         'facecolor', 'none', 'edgecolor', 'r', 'linestyle', ':')
+%     % Draw image boundaries
+%     for jj=1:numel(ol_img_fnames)
+%         patch(...
+%             'xdata', img_polys(:,1,ol_idx(jj)), ...
+%             'ydata', img_polys(:,2,ol_idx(jj)), ...
+%             'facecolor', 'none', 'edgecolor', 'g')
+%     end
+%     hold off;
+%     % END DEV/DB
     
     % Of these images, determine the possible center positions
     shift_space = cell(numel(ol_idx), 1);
@@ -274,10 +277,19 @@ for ii=1:n_rois
             flip(imsize)];
         rect_xywh_list(jj,:) = rect_xywh;
         
-        shift_space{jj} = coordsOverlapCircleRect(...
-            [xy, roi_pos_tol], rect_xywh);
+        shift_space{jj} = coordsOverlapImgROI(...
+            rect_xywh, roi_xywh, roi_pos_tol);
     end
-    
+    % Remove non-encapsulating options
+    remove = cellfun(@isempty, shift_space);
+    if all(remove)
+        failed_rois(ii) = true;
+        continue;
+    end
+    shift_space(remove)         = [];
+    rect_xywh_list(remove, :)   = [];
+    ol_img_fnames(remove)       = [];
+
     % Is this an optimization problem??
     % Could have generate a cost function from FOV and distance from center
     % Not sure how to include avoiding vessel shadows, could just make the
@@ -288,10 +300,7 @@ for ii=1:n_rois
     % Allow rotation in 15° increments?
     
     % Measure distance between roi center and this image's center
-    dists = zeros(size(ol_img_fnames));
-    for jj=1:numel(ol_img_fnames)
-        dists(jj) = pdist2(rect_xywh_list(jj,1:2), xy);
-    end
+    dists = pdist2(rect_xywh_list(:,1:2), xy);
     
     % Get FOVs
     fovs = zeros(size(ol_img_fnames));
@@ -313,11 +322,17 @@ end
 
 %% Warn user about ROI failures
 failed_roi_list = u_loc_xy_deg(failed_rois, :);
-failed_roi_list(:,2) = failed_roi_list(:,2)*-1; % return to Cartesian
+failed_roi_list(:,2) = failed_roi_list(:,2);
 for ii=1:size(failed_roi_list, 1)
     warning('ROI could not be extracted from: %i, %i', ...
         failed_roi_list(ii,1), failed_roi_list(ii,2));
 end
+
+% % DEV/DB
+% figure;
+% img_path = 'C:\Users\DevLab_811\Box\Manuscripts\Author\Articles\2020-Salmon-PIPE-BOE\Figs\FigX-ROIs';
+% img_fname = 'rois.tiff';
+% % DEV/DB
 
 %% Compute ROIs and return
 rois(n_rois).filename = [];
@@ -331,11 +346,28 @@ for ii=1:n_rois
     % Nominal and actual locations
     rois(ii).loc_deg    = u_loc_xy_deg(ii, :);
     rois(ii).xywh       = [roi_shifts(ii,:), roi_sz_px, roi_sz_px];
+    
+    % % DEV/DB
+    % im = imread(fullfile(paths.mon_out, rois(ii).filename));
+    % im = im(...
+    %     rois(ii).xywh(2)-rois(ii).xywh(4)/2:rois(ii).xywh(2)+rois(ii).xywh(4)/2, ... % y
+    %     rois(ii).xywh(1)-rois(ii).xywh(3)/2:rois(ii).xywh(1)+rois(ii).xywh(3)/2, ... % x
+    %     1); % image layer
+    % imshow(im);
+    % if ii==1
+    %     wm = 'overwrite';
+    % else
+    %     wm = 'append';
+    % end
+    % imwrite(im, fullfile(img_path,img_fname), 'WriteMode', wm);
+    % % END DEV/DB
 end
 
 % DEV/DB
-% drawPennMontage(db, paths, opts, false, u_loc_xy_px, ref_origin_xy, ...
-%     roi_sz_px, roi_pos_tol, roi_shifts);
+f = drawPennMontage(db, paths, opts, false, u_loc_xy_px, ref_origin_xy, ...
+    roi_sz_px, roi_pos_tol, roi_shifts);
+fig_data = getframe(f);
+imwrite(fig_data.cdata, fullfile(paths.data, 'montage_w_rois.png'));
 % END DEV/DB
 
 end

@@ -11,16 +11,22 @@ classdef vidset
         hasAllMods logical      = false;
         hasAllOutMods logical   = false;
         hasAnySuccess logical   = false;
-        % clock arrays for profiling
-        t_proc_create double    = [];
-        t_proc_start double     = [];
-        t_proc_end double       = [];
-        t_proc_read double      = [];
-        t_proc_dsind double     = [];
-        t_proc_arfs double      = [];
-        t_proc_ra double        = [];
-        t_proc_mon double       = [];
-        t_full_mods double      = [];
+        % PROFILING
+        % If storage is a concern, all of the t_proc fields can be removed,
+        % but keep the profiling field and set to false
+        profiling logical       = true;
+        t_proc_create double    = []; % When object is created
+        t_full_mods double      = []; % When secondaries are created
+        % R/A (registration and averaging)
+        t_proc_start double     = []; % When r/a is started
+        t_proc_read double      = []; % When video is read for r/a
+        t_proc_dsind double     = []; % When video is desinusoided
+        t_proc_arfs double      = []; % When reference frames are selected
+        t_proc_ra double        = []; % When DeMotion is finished
+        t_proc_emr double       = []; % When Eye-motion-repair is finished
+        t_proc_end double       = []; % When r/a is finished
+        % Montaging
+        t_proc_mon double       = []; % When an image is placed in a montage
     end
     
     methods

@@ -1,6 +1,13 @@
 function [ht, wd, nFrames, nCrop, tif_path, tif_fname, px_cdf, cropErr] = ...
     getOutputSizeAndN(out_proc, dmb_fname, current_modality)
 %getOutputSizeAndN determines results of demotion
+% todo: there is some weird bug with DeMotion where the SR .avi's don't
+% seem to match the registered image. In the SR .avi, you expect the
+% reference frame to show up as an undistorted raw frame, but this is
+% missing sometimes. This results in chunks of the image being interpreted
+% as an average of 0 frames and inferring a cropping error. It would be
+% better to determine cropping errors from the .dmp so that we don't have
+% to waste time dealing with the binary .avi's.
 
 %% Defaults
 ht = 0;
@@ -34,6 +41,11 @@ wd = f.Width;
 [~,tif_name,~] = fileparts(tif_search.name);
 nameparts = strsplit(tif_name, '_');
 nCrop = str2double(nameparts{find(strcmp(nameparts, 'cropped'))+1});
+if nCrop == 1
+    % This is definitely a crop error, but not one where we want to
+    % increase the ncc threshold
+    return;
+end
 
 %% Get # Frames
 % This is trickier because the n listed in the filename is not always
@@ -49,6 +61,7 @@ if ~isempty(avi_search)
     vr = VideoReader(fullfile(avi_search.folder, avi_search.name));
     nFrames = vr.NumFrames;
 else
+    % Use filename
     nFrames = str2double(nameparts{find(strcmp(nameparts, 'n'))+1});
 end
 
@@ -57,9 +70,15 @@ end
 % Find binary image
 if exist('current_modality', 'var') ~=0 && ~isempty(current_modality)
     bin_name = strrep(tif_name, current_modality, 'bin');
+    if exist(fullfile(sr_avi_path, [bin_name, '.avi']), 'file') == 0
+        error('%s not found', [bin_name, '.avi']);
+    end
+    
     bin_sr_vid = fn_read_AVI(fullfile(sr_avi_path, [bin_name, '.avi']));
     bin_map = sum(bin_sr_vid, 3)./255;
-    if any(bin_map(:)==0)
+    if numel(find(bin_map(:)==0)) > 4
+        % A little bit of crop error at the corners never hurt anyone,
+        % right?
         cropErr = true;
     end
     

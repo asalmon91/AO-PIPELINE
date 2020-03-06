@@ -4,7 +4,7 @@ function txfm_xy = getTxfmdRectCoords(wh, txfm, global_dxdy)
 
 % txfm(1:2,3) = -txfm(1:2,3);
 
-xyz = [0,wh(1),wh(1),0; 0,0,wh(2),wh(2); ones(1,4)]';
+xyz = [1,wh(1),wh(1),1; 1,1,wh(2),wh(2); ones(1,4)]';
 % Translate so it's centered on 0,0
 center_shift_xyz = [wh(1)/2, wh(2)/2, 0];
 xyz = xyz - center_shift_xyz; 

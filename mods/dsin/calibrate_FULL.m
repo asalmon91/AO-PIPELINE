@@ -1,6 +1,9 @@
 function db = calibrate_FULL(db, paths, opts, qc, gui)
 %calibrateFULL handles calibration :)
 
+% Update progress tracker
+afterEach(qc, @(x) update_pipe_progress(db, paths, 'cal', gui, x))
+
 % Update database
 db = updateCalDB(db, paths, opts);
 update_pipe_progress(db, paths, 'cal', gui)
@@ -17,6 +20,7 @@ parfor ii=1:numel(dsin_objs)
     end
 end
 db.cal.dsin = dsin_objs;
+db = updateCalDB(db, paths, opts);
 update_pipe_progress(db, paths, 'cal', gui)
 
 end

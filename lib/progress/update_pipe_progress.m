@@ -32,7 +32,7 @@ if exist('in_obj', 'var') ~= 0 && ~isempty(in_obj)
             live_data.vid.vid_set = vertcat(live_data.vid.vid_set, in_obj);
         end
         
-    else % Montage (todo: make a montage object for pete's sake)
+    else % Montage (todo: make a montage class for pete's sake)
         
         
         

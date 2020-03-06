@@ -1,13 +1,13 @@
 function live_data = ao_pipe(varargin)
 %live_pipe Waits for new videos in root_path and begins processing them
 % optional "name, value" pair input arguments include:
-%   @root_path: the full path to the directory which contains the "Raw" and
+%   #root_path: the full path to the directory which contains the "Raw" and
 %   "Calibration" folders. If not given, a ui folder browser will be opened
-%   @num_workers: the number of workers used in parallel processing. If not
+%   #num_workers: the number of workers used in parallel processing. If not
 %   given, default is the maximum number of workers available. If
 %   num_workers is 1, then a parallel pool will not be used and the process
 %   will wait until a video set is finished before starting the next one.
-%   @pipe_gui is a pipe_progress_App object that contains settings and user
+%   #pipe_gui is a pipe_progress_App object that contains settings and user
 %   preferences necessary for running, as well as several tables for
 %   reporting progress
 
@@ -21,56 +21,66 @@ addpath(genpath('classes'), genpath('mods'), genpath('lib'));
 %% Inputs & system settings
 [root_path, num_workers, gui] = handle_input(varargin);
 
-%% Handle paths
-paths = initPaths(root_path);
-% Create output path
-if ~isfield(paths, 'out') || isempty(paths.out)
-    paths.out = fullfile(paths.pro, 'LIVE');
-    if exist(paths.out, 'dir') == 0
-        mkdir(paths.out)
-    end
-end
-
 %% Update LIVE state and options
-[live_data, sys_opts] = load_live_session(paths.root);
-[live_data.date, live_data.eye] = getDateAndEye(paths.root);
-if isempty(sys_opts) && exist('gui', 'var') ~= 0 && ~isempty(gui)
-    % todo: Should we make a function that parses gui data to sys_opts?
-    sys_opts.lpmm           = gui.grid_freq.Value/25.4; % lines per mm spacing in grids
-    sys_opts.me_f_mm        = gui.grid_focal.Value; % model eye focal length (mm)
-    sys_opts.strip_reg      = gui.sr_live_cb.Value;
-    sys_opts.n_frames       = gui.n_frames_live_txt.Value; % # frames to average
-    sys_opts.mod_order      = gui.in_mods_uit.Data(:,1)';
-    sys_opts.lambda_order   = cell2mat(cellfun(@str2double, ...
-        gui.in_mods_uit.Data(:,2)', 'uniformoutput', false));
-end
-live_data = updateLIVE(paths, live_data, sys_opts, gui);
-
-%% Update all progress
-% in case it was interrupted
-update_pipe_progress(live_data, paths, 'cal', gui);
-update_pipe_progress(live_data, paths, 'vid', gui);
-update_pipe_progress(live_data, paths, 'mon', gui);
-
-%% Get ARFS information
-if ~isfield(live_data.vid, 'arfs_opts') || isempty(live_data.vid.arfs_opts)
-    search = subdir('pcc_thresholds.txt');
-    if numel(search) == 1
-        live_data.vid.arfs_opts.pcc_thrs = ...
-            single(getPccThr(search.name, sys_opts.mod_order));
-    else
-        warning('PCC thresholds not found for ARFS, using defaults');
-        live_data.vid.arfs_opts.pcc_thrs = ones(size(sys_opts.mod_order)).*0.01;
-    end
-end
-
-%% Set up montaging
-live_data.mon.opts.mods = gui.mod_order_uit.Data(:,1)';
-live_data.mon.opts.min_overlap = 0.25; % minimum proportion of overlap
-% todo: decide if min_overlap should be a setting; this is just for
-% feedback, so it's probably fine to hard-code
 if gui.run_live
+    [live_data, sys_opts, paths] = load_previous_session(root_path, 'live');
+    [live_data.date, live_data.eye] = getDateAndEye(paths.root);
+    if isempty(sys_opts) && exist('gui', 'var') ~= 0 && ~isempty(gui)
+        % todo: Should we make a function that parses gui data to sys_opts?
+        sys_opts.lpmm           = gui.grid_freq.Value/25.4; % lines per mm spacing in grids
+        sys_opts.me_f_mm        = gui.grid_focal.Value; % model eye focal length (mm)
+        sys_opts.strip_reg      = gui.sr_live_cb.Value;
+        sys_opts.n_frames       = gui.n_frames_live_txt.Value; % # frames to average
+        sys_opts.mod_order      = gui.in_mods_uit.Data(:,1)';
+        sys_opts.lambda_order   = cell2mat(cellfun(@str2double, ...
+            gui.in_mods_uit.Data(:,2)', 'uniformoutput', false));
+    end
+    live_data = updateLIVE(paths, live_data, sys_opts, gui);
+
+    %% Handle paths
+    paths = initPaths(root_path);
+    % Create output path
+    if ~isfield(paths, 'out') || isempty(paths.out)
+        paths.out = fullfile(paths.pro, 'LIVE');
+        if exist(paths.out, 'dir') == 0
+            mkdir(paths.out)
+        end
+    end
+
+    %% Update all progress
+    % in case it was interrupted
+    update_pipe_progress(live_data, paths, 'cal', gui);
+    update_pipe_progress(live_data, paths, 'vid', gui);
+    update_pipe_progress(live_data, paths, 'mon', gui);
+
+    %% Get ARFS information
+    if gui.run_live && ...
+            (~isfield(live_data.vid, 'arfs_opts') || ...
+            isempty(live_data.vid.arfs_opts))
+        search = subdir('pcc_thresholds.txt');
+        if numel(search) == 1
+            live_data.vid.arfs_opts.pcc_thrs = ...
+                single(getPccThr(search.name, sys_opts.mod_order));
+        else
+            warning('PCC thresholds not found for ARFS, using defaults');
+            live_data.vid.arfs_opts.pcc_thrs = ones(size(sys_opts.mod_order)).*0.01;
+        end
+    end
+
+    %% Set up montaging
+    live_data.mon.opts.mods = gui.mod_order_uit.Data(:,1)';
+    live_data.mon.opts.min_overlap = 0.25; % minimum proportion of overlap
+    % todo: decide if min_overlap should be a setting; this is just for
+    % feedback, so it's probably fine to hard-code
     mon_app = montage_display_App(gui.mod_order_uit.Data);
+    
+    %% Set up queues
+    [pff_cal, ~, pff_vid, ~, pff_mon, ~] = initQueues();
+    % todo: figure out how to allow multiple threads for videos, at that point,
+    % the queue/afterEach/send procedure may be useful
+    % afterEach(q_c, @(x) update_pipe_progress(x, paths, 'cal', gui));
+    % afterEach(q_v, @(x) update_pipe_progress(x, paths, 'vid', gui));
+    % afterEach(q_m, @(x) update_pipe_progress(x, paths, 'mon', gui));
 end
 
 %% Set up parallel pool
@@ -82,16 +92,8 @@ if num_workers > 1 && exist('parfor', 'builtin') ~= 0
     end
 end
 
-%% Set up queues
-[pff_cal, ~, pff_vid, ~, pff_mon, ~] = initQueues();
-% todo: figure out how to allow multiple threads for videos, at that point,
-% the queue/afterEach/send procedure may be useful
-% afterEach(q_c, @(x) update_pipe_progress(x, paths, 'cal', gui));
-% afterEach(q_v, @(x) update_pipe_progress(x, paths, 'vid', gui));
-% afterEach(q_m, @(x) update_pipe_progress(x, paths, 'mon', gui));
-
 %% LIVE LOOP
-while ~live_data.done && gui.run_live
+while gui.run_live && ~live_data.done
     %% Calibration Loop
     [live_data, pff_cal] = calibrate_LIVE(...
         live_data, paths, pff_cal, cpool, gui);
@@ -129,22 +131,59 @@ clear live_data;
 %% Set up a new parallel pool (supercluster if possible)
 % addpath(fullfile(matlabroot, 'toolbox', 'local'));
 
+%% Determine GPU status
+gpuDevice(1);
+
 %% Set up queues for sending updates in a parfor
 [~, q] = initQueues();
 
+%% Run FULL pipe on each dataset in the list
 for ii=1:numel(gui.root_path_list)
     %% Init paths
-    paths = initPaths(gui.root_path_list{ii});
-    paths.out = fullfile(paths.pro, 'FULL');
+    root_path = gui.root_path_list{ii};
     
-    %% Load live data if it exists
-    [pipe_data, opts] = load_live_session(paths.root);
-    pipe_data.filename = 'AO_PIPE_FULL.mat';
-    % Update options
-    opts.mod_order      = gui.mod_order_uit.Data(:,1)';
-    opts.lambda_order   = cell2mat(cellfun(@str2double, ...
-        gui.mod_order_uit.Data(:,2)', 'uniformoutput', false));
-    opts.n_frames = gui.n_frames_full_txt.Value;
+    %% Full -> Live -> New
+    % Load previous session initializes a new database by default if one
+    % doesn't already exist
+    [~, opts, paths, pipe_data] = load_previous_session(root_path, 'full');
+    if isempty(opts)
+        [pipe_data, opts, paths] = load_previous_session(paths.root, 'live');
+        pipe_data.filename = 'AO_PIPE_FULL.mat'; % Overwrite
+    end
+    if isempty(pipe_data.eye) || isempty(pipe_data.date)
+        [date_str, eye_str] = getDateAndEye(paths.root);
+        pipe_data.date = date_str;
+        pipe_data.eye = eye_str;
+    end
+    
+    %% Setup output
+    % R/A output
+    if ~isfield(paths, 'out') || isempty(paths.out) || exist(paths.out, 'dir') == 0
+        paths.out = fullfile(paths.pro, 'FULL');
+        if exist(paths.out, 'dir') == 0
+            mkdir(paths.out);
+        end
+    end
+    % Montage output
+    if ~isfield(paths, 'mon_out') || isempty(paths.mon_out) || exist(paths.mon_out, 'dir') == 0
+        paths.mon_out = fullfile(paths.mon, 'FULL');
+        if exist(paths.mon_out, 'dir') == 0
+            mkdir(paths.mon_out);
+        end
+    end
+    
+    %% Update options
+    if isempty(opts)
+        opts.mod_order      = gui.mod_order_uit.Data(:,1)';
+        opts.lambda_order   = cell2mat(cellfun(@str2double, ...
+            gui.mod_order_uit.Data(:,2)', 'uniformoutput', false));
+        opts.n_frames = gui.n_frames_full_txt.Value;
+        opts.lpmm = gui.grid_freq.Value/25.4;
+        opts.me_f_mm = gui.grid_focal.Value;
+        if ~isfield(opts, 'subject') || isempty(opts.subject)
+            opts.subject = gui.subject;
+        end
+    end
     
     % Get arfs parameters
     search = subdir('pcc_thresholds.txt');
@@ -155,51 +194,30 @@ for ii=1:numel(gui.root_path_list)
         warning('PCC thresholds not found for ARFS, using defaults');
         opts.pcc_thrs = ones(size(sys_opts.mod_order)).*0.01;
     end
-    save(fullfile(paths.root, pipe_data.filename), 'pipe_data', 'opts')
+    save(fullfile(paths.root, pipe_data.filename), 'pipe_data', 'opts', 'paths')
 
     %% Calibration
-    afterEach(q, @(x) update_pipe_progress(pipe_data, paths, 'cal', gui, x))
     pipe_data = calibrate_FULL(pipe_data, paths, opts, q, gui);
-    save(fullfile(paths.root, pipe_data.filename), 'pipe_data')
+    save_full_pipe(pipe_data, opts, paths);
     uiwait(gui.fig, 1);
     
     %% Videos - Secondaries, Registration/Averaging, EMR
     pipe_data = process_vids_FULL(pipe_data, paths, opts, q, gui);
+    save_full_pipe(pipe_data, opts, paths);
     uiwait(gui.fig, 1);
 
     %% Montaging
     pipe_data = montage_FULL(pipe_data, paths, opts);
+    save_full_pipe(pipe_data, opts, paths);
     uiwait(gui.fig, 1);
     
-%     vl_setup;
-%     % vl_version verbose
-%     % Get position file
-%     paths.mon_out = fullfile(paths.mon, 'FULL');
-%     if exist(paths.mon_out, 'dir') == 0
-%         mkdir(paths.mon_out);
-%     end
-%     loc_search = find_AO_location_file(paths.root);
-%     [loc_folder, loc_name, loc_ext] = fileparts(loc_search.name);
-%     loc_data = processLocFile(loc_folder, [loc_name, loc_ext]);
-%     [out_ffname, ~, ok] = fx_fix2am(loc_search.name, ...
-%                     'human', 'penn', pipe_data.cal.dsin, [], ...
-%                     pipe_data.id, pipe_data.date, pipe_data.eye, paths.mon);
-%     
-%     % Call Penn automontager
-%     txfm_type   = 1; % Rigid
-%     append      = false;
-%     featureType = 0; % SIFT
-%     exportToPS  = false;
-%     montage_file = AOMosiacAllMultiModal(paths.out, out_ffname{1}, ...
-%         paths.mon_out, 'multi_modal', opts.mod_order', txfm_type, ...
-%         append, [], exportToPS, featureType)
-    
     %% Analysis
-    % Estimate spacing for whole montage, highest density used as 0,0
-    analyze_FULL(pipe_data, opts, paths)
-    fx_montage_dft_analysis(aligned_tif_path, mod_order{1}, lambda_order(1), do_par);
-    % Extract ROIs outward from 0,0
-    % Run CNN cone counts on these ROIs
+    [pipe_data, paths] = analysis_FULL(pipe_data, paths, opts);
+    save_full_pipe(pipe_data, opts, paths);
+    uiwait(gui.fig, 1);
+    
+    %% REPORT
+    
 end
 
 end

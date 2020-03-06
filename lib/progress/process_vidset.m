@@ -1,4 +1,4 @@
-function vid_set = process_vidset(vid_set, dsins, paths, opts)
+function vid_set = process_vidset(vid_set, dsins, paths, opts, q)
 %process_vidset performs several processing steps: secondary modality
 %creation, registration and averaging, and statistical eye motion 
 % correction
@@ -6,13 +6,14 @@ function vid_set = process_vidset(vid_set, dsins, paths, opts)
 %% Constants
 SUCCESS_CRIT    = 2/3; % Min img height
 SHORT_CIRCUIT   = 1/3; % Max strip size
+LPS_0           = 6; % Starting lines per strip
+NCC_THR_0       = 0.1; % Starting NCC threshold (gets adjusted before application)
 SS_FB_FX        = @(x) 2.*x; % Feedback function for iterating strip size
 LBSS            = 6; % lines between strip start
 SR_EXT          = fullfile('Processed', 'SR_TIFs');
 EMR_EXT         = 'Repaired';
-FAIL_CROP       = 1;
-NCC_THR_INC     = 0.05; % Amount by which to incease ncc_thr after a crop error
-
+FAIL_CROP       = 1; % Crop 1 always indicates failure
+NCC_THR_INC     = 0.01; % Amount by which to incease ncc_thr after a crop error
 
 %% Make output path
 paths.out = fullfile(paths.pro, 'FULL');
@@ -20,8 +21,17 @@ if exist(paths.out, 'dir') == 0
     mkdir(paths.out);
 end
 
+%% Start the clock
+if vid_set.profiling
+    vid_set.t_proc_start = clock;
+end
+
 %% Secondary modalities
 vid_set = makeSecondaries(vid_set, paths.raw);
+send(q, vid_set);
+if vid_set.profiling
+    vid_set.t_full_mods = clock;
+end
 
 %% Get Calibration File
 dsin = dsins(vid_set.fov == [dsins.fov]);
@@ -62,10 +72,16 @@ for ii=1:numel(opts.mod_order)
         end
     end
     orig_dims = size(vid);
+    if vid_set.profiling
+        vid_set.t_proc_read = clock;
+    end
     
     %% Desinusoid
     vid = desinusoidVideo(vid, dsin.mat);
-    
+    if vid_set.profiling
+        vid_set.t_proc_dsind = clock;
+    end
+
     %% Get new dimensions and success criteria
     dims = size(vid);
     FAIL_HT = round(SUCCESS_CRIT*dims(1));
@@ -75,6 +91,7 @@ for ii=1:numel(opts.mod_order)
     
     %% ARFS
     frames = arfs(vid, 'pcc_thr', opts.pcc_thrs(ii), 'mfpc', 10);
+    vid_set.vids(ii).frames = frames;
     fids = get_best_n_frames_per_cluster(frames, 1);
     n_frames = get_n_not_rejected(frames, ...
         {'rejectSmallGroups'; 'rejectSmallClusters'; 'firstFrame'});
@@ -82,6 +99,10 @@ for ii=1:numel(opts.mod_order)
         n_frames = opts.n_frames;
     end
     % Include frames rejected by motion tracking (not the most robust)
+    if vid_set.profiling
+        vid_set.t_proc_arfs = clock;
+    end
+    send(q, vid_set);
     
     %% Generate an acceptable image from each reference frame
     for jj=1:numel(fids)
@@ -115,15 +136,15 @@ for ii=1:numel(opts.mod_order)
 %             lps = candidate_ncc_thr_lut(1,1);
 %             thr = candidate_ncc_thr_lut(2,1);
 %             lps = lps_array(1);
-            lps = 6;
-            thr = 0.1;
             % Add to cluster
-            fids(jj).cluster(kk).lps = lps;
-            fids(jj).cluster(kk).ncc_thr = thr;
+            % Starting conditions
+            fids(jj).cluster(kk).lps        = LPS_0;
+            fids(jj).cluster(kk).ncc_thr    = NCC_THR_0;
 %             fids(jj).cluster(kk).lps_thr_lut = candidate_ncc_thr_lut;
             
             %% Demotion
             success = false;
+            dmi = 0;
             while ~success
                 % Update parameters
                 lps     = fids(jj).cluster(kk).lps;
@@ -166,6 +187,12 @@ for ii=1:numel(opts.mod_order)
                     % todo: this seems stupid. Should probably make a
                     % separate function for analyzing crop errors and the
                     % pixel cdf
+                    dmi = dmi+1;
+                    fprintf('Current iteration: %i\n', dmi);
+                    fprintf('DeMotion parameters for %s:\n', prime_fname);
+                	fprintf('LPS: %i, NCC threshold: %1.2f\n', lps, ncc_thr);
+                    % Apply the threshold and compute the registered
+                    % average
                     [status, stdout] = deploy_reprocess(...
                         fullfile(paths.tmp, dmp_fname), ncc_thr);
                     if status ~= 1
@@ -174,6 +201,7 @@ for ii=1:numel(opts.mod_order)
                     end
                     [~,~,~,~,~,~,~,cropErr] = ...
                         getOutputSizeAndN(paths.imgs, dmb_fname, opts.mod_order{ii});
+                    
                     if cropErr
                         ncc_thr = ncc_thr + NCC_THR_INC;
                         % Eventually it will either get rid of the crop
@@ -200,7 +228,9 @@ for ii=1:numel(opts.mod_order)
                 if ht >= FAIL_HT && nCrop > FAIL_CROP && ...
                         nFrames > opts.n_frames %&& ~cropErr %&& ...
                         %f80 > opts.n_frames
-                        
+                    if vid_set.profiling
+                        vid_set.t_proc_ra = clock;
+                    end
                     % Success!
                     success = true;
                     fids(jj).cluster(kk).success = true;
@@ -216,6 +246,7 @@ for ii=1:numel(opts.mod_order)
                     if emr_fail
                         error(emr_msg);
                     end
+                    
                     out_fnames = strrep(out_fnames, '.tif', '_repaired.tif');
                     paths.emr = fullfile(paths.imgs, EMR_EXT);
                     fids(jj).cluster(kk).out_fnames = out_fnames;
@@ -230,11 +261,9 @@ for ii=1:numel(opts.mod_order)
                             paths.out);
                     end
                     
-                    
                 else % Failure
                     % 2x strip size and try again
                     lps = SS_FB_FX(lps);
-                    lps = lps*2;
                     thr = 0.1;
                     % Unless this strip size is too big
                     if lps > round(dims(1)*SHORT_CIRCUIT)
@@ -255,11 +284,9 @@ for ii=1:numel(opts.mod_order)
     vid_set.vids(ii).fids = fids;
 end % End of this modality
 
-
-
-
-
-
+if vid_set.profiling
+    vid_set.t_proc_end = clock;
+end
 
 end
 
