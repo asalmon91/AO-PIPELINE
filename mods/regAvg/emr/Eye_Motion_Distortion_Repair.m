@@ -96,13 +96,13 @@ function [] = Eye_Motion_Distortion_Repair(motion_path, fName, crop_ROI, framemo
     end
 
     
-    tmp = zeros( length(framemotion), length(framemotion{1}) );
-    % Convert from list into regular array
-    for i=1:length(framemotion)
-        tmp(i,:) = cell2mat(framemotion{i});
-    end
-     framemotion = tmp;
-clear tmp;
+%     tmp = zeros( length(framemotion), length(framemotion{1}) );
+%     % Convert from list into regular array
+%     for i=1:length(framemotion)
+%         tmp(i,:) = cell2mat(framemotion{i});
+%     end
+%      framemotion = tmp;
+% clear tmp;
     
     %Ref_Frame
     ref_largest_slow_axis = max(framemotion(1,:));

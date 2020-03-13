@@ -76,7 +76,7 @@ except:
     #tkMessageBox.showerror("Unable to start MATLAB! Ensure you have a valid copy of MATLAB installed AND it has been linked with python.")
     quit(1)
 '''
-
+'''
 # Defaults
 imgPath = ''
 dmbPath = ''
@@ -110,6 +110,10 @@ for opt, arg in opts:
 # Assume dmp is in same folder as dmb
 dmp_folder_path = dmbPath
 dmpFname = dmbFname[:-1] + 'p'
+'''
+dmp_folder_path = 'C:\\Users\\DevLab_811\\workspace\\pipe_test\\AM_11914\\AO_2_3_SLO\\2018_11_05_OS\\Processed\\FULL\\1_L2C1\\tmp'
+dmpFname = 'AM_11914_790nm_OS_confocal_0001_1_L2C1_ref_144_lps_6_lbss_6.dmp'
+image_folder_path = 'C:\\Users\\DevLab_811\\workspace\\pipe_test\\AM_11914\\AO_2_3_SLO\\2018_11_05_OS\\Processed\\FULL\\1_L2C1\\Processed\\SR_TIFs'
 
 for thisfile in os.listdir(dmp_folder_path):
     if thisfile == dmpFname:
@@ -239,7 +243,8 @@ for thisfile in os.listdir(dmp_folder_path):
 
                 # progo.step()
 
-        except:
+        except e:
+            print e
             print "DMP failed to process." + "Failed to process DMP (" + \
                   thisfile + \
                   ")! This file may be corrupted. Re-process the DMP, or contact your local RFC."

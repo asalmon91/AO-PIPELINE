@@ -93,10 +93,14 @@ for ii=1:numel(opts.mod_order)
     frames = arfs(vid, 'pcc_thr', opts.pcc_thrs(ii), 'mfpc', 10);
     vid_set.vids(ii).frames = frames;
     fids = get_best_n_frames_per_cluster(frames, 1);
-    n_frames = get_n_not_rejected(frames, ...
-        {'rejectSmallGroups'; 'rejectSmallClusters'; 'firstFrame'});
+%     n_frames = get_n_not_rejected(frames, ...
+%         {'rejectSmallGroups'; 'rejectSmallClusters'; 'firstFrame'});
+    n_frames = get_n_not_rejected(frames, {'firstFrame'});
     if n_frames < opts.n_frames
         n_frames = opts.n_frames;
+    end
+    if n_frames > 50
+        n_frames = 50;
     end
     % Include frames rejected by motion tracking (not the most robust)
     if vid_set.profiling
@@ -165,6 +169,7 @@ for ii=1:numel(opts.mod_order)
                     'ffrSaveSeq', false, ...
                     'srSaveSeq', true, ... % todo: set to false if speed is a concern
                     'appendText', append_text);
+                % todo: don't bother with secondaries at 
                 if status
                     error(stdout);
                 end
@@ -181,6 +186,7 @@ for ii=1:numel(opts.mod_order)
                 %% Measure NCC distribution and calculate threshold
                 ncc_thr = getNewStripThreshold(...
                     fullfile(paths.tmp, dmp_fname), false, ncc_thr);
+                fids(jj).cluster(kk).ncc_thr = ncc_thr;
                 % Keep adjusting ncc_thr until there are no crop errors
                 cropErr = true;
                 while cropErr
@@ -213,12 +219,10 @@ for ii=1:numel(opts.mod_order)
                 %% DeMotion feedback
                 % Get output parameters
                 if status == 1
-                    [ht, ~, nFrames, nCrop, ~, tif_fname] = ...
-                        getOutputSizeAndN(paths.imgs, dmb_fname);
+                    [ht, ~, nFrames, nCrop, ~, tif_fname, ~] = ...
+                        getOutputSizeAndN(paths.imgs, dmb_fname, opts.mod_order{ii});
                     tif_fnames = strrep(tif_fname, opts.mod_order{ii}, mods);
                     % todo: manage success criteria better
-                    % 80% of pixels are an average of this many frames
-                    %f80 = px_cdf(find(px_cdf(:,1)>0.8, 1, 'last'), 2);
                 else
                     warning(stdout);
                     ht = 0; nCrop = 0; nFrames = 0;
@@ -226,11 +230,13 @@ for ii=1:numel(opts.mod_order)
                 
                 % Check against criteria
                 if ht >= FAIL_HT && nCrop > FAIL_CROP && ...
-                        nFrames > opts.n_frames %&& ~cropErr %&& ...
-                        %f80 > opts.n_frames
+                        nFrames > opts.n_frames %&& f95 > opts.n_frames
                     if vid_set.profiling
                         vid_set.t_proc_ra = clock;
                     end
+                    % todo: reprocess with secondary sequences at this
+                    % point
+                    
                     % Success!
                     success = true;
                     fids(jj).cluster(kk).success = true;
@@ -240,12 +246,15 @@ for ii=1:numel(opts.mod_order)
                     out_fnames = [{tif_fname}; tif_fnames'];
                     
                     %% EMR
-                    [emr_fail, emr_msg] = deployEMR(...
-                        'C:\Python27\python.exe', ...
-                        paths.imgs, paths.tmp, dmb_fname);
-                    if emr_fail
-                        error(emr_msg);
-                    end
+                    deploy_emr_direct(fullfile(paths.tmp, dmp_fname), ...
+                        paths.imgs, opts.mod_order{ii});
+                    % todo: catch errors
+%                     [emr_fail, emr_msg] = deployEMR(...
+%                         'C:\Python27\python.exe', ...
+%                         paths.imgs, paths.tmp, dmb_fname);
+%                     if emr_fail
+%                         error(emr_msg);
+%                     end
                     
                     out_fnames = strrep(out_fnames, '.tif', '_repaired.tif');
                     paths.emr = fullfile(paths.imgs, EMR_EXT);

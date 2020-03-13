@@ -1,4 +1,4 @@
-function [ht, wd, nFrames, nCrop, tif_path, tif_fname, px_cdf, cropErr] = ...
+function [ht, wd, nFrames, nCrop, tif_path, tif_fname, f95, cropErr] = ...
     getOutputSizeAndN(out_proc, dmb_fname, current_modality)
 %getOutputSizeAndN determines results of demotion
 % todo: there is some weird bug with DeMotion where the SR .avi's don't
@@ -17,6 +17,7 @@ nCrop = 0;
 tif_path = '';
 tif_fname = '';
 cropErr = false;
+f95 = 0;
 
 %% Find matching output tif
 [~,dmb_name,~] = fileparts(dmb_fname);
@@ -71,12 +72,15 @@ end
 if exist('current_modality', 'var') ~=0 && ~isempty(current_modality)
     bin_name = strrep(tif_name, current_modality, 'bin');
     if exist(fullfile(sr_avi_path, [bin_name, '.avi']), 'file') == 0
-        error('%s not found', [bin_name, '.avi']);
+        warning('%s not found', [bin_name, '.avi']);
+        % Assume in this case that something got screwed up in the cropping
+        cropErr = true;
+        return;
     end
     
     bin_sr_vid = fn_read_AVI(fullfile(sr_avi_path, [bin_name, '.avi']));
     bin_map = sum(bin_sr_vid, 3)./255;
-    if numel(find(bin_map(:)==0)) > 4
+    if numel(find(bin_map(:)==0)) > 0
         % A little bit of crop error at the corners never hurt anyone,
         % right?
         cropErr = true;
@@ -85,6 +89,32 @@ if exist('current_modality', 'var') ~=0 && ~isempty(current_modality)
     [N,edges] = histcounts(bin_map(:), 0:size(bin_sr_vid,3), ...
         'normalization', 'cdf');
     px_cdf = [1-N', edges(1:end-1)'];
+    % f95 statistic: 95% of pixels are an average of N frames
+%     THR = 0.95;
+%     just_lower = max(px_cdf(px_cdf(:,1) < THR, 1));
+%     just_higher = min(px_cdf(px_cdf(:,1) >= THR, 1));
+%     frames_lower = px_cdf(px_cdf(:,1) == just_lower, 2);
+%     frames_higher = px_cdf(px_cdf(:,1) == just_higher, 2);
+%     f95 = interp1(...
+%         [just_lower; just_higher], [frames_lower; frames_higher], ...
+%         THR, 'linear');
+    
+%     % DEV/DB
+%     figure;
+%     plot(px_cdf(:,1).*100, px_cdf(:,2),'-k');
+%     xlabel('% of pixels');
+%     ylabel('# of frames');
+%     hold on;
+%     plot(THR*100, f95, '*r');
+%     hold off;
+%     xlim([0,100]);
+%     ylim([0, nFrames]);
+%     legend({'Pixel Contribution Curve';'Threshold'}, ...
+%         'location', 'southwest');
+%     set(gca, 'tickdir', 'out', 'box', 'off',...
+%         'xminorgrid', 'on', 'yminorgrid', 'on');
+%     title(sprintf('F95: %0.1f', f95));
+%     % % END DEV/DB
 end
 
 

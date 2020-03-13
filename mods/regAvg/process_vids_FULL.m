@@ -18,6 +18,7 @@ for ii=1:numel(vid_objs)
     % Skip if already run
     if ~vid_objs(ii).hasAnySuccess
         vid_objs(ii) = process_vidset(vid_objs(ii), dsin_objs, paths, opts, q);
+        save_full_pipe(pipe_data, opts, paths);
     end
     send(q, vid_objs(ii));
 end

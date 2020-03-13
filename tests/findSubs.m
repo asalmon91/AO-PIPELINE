@@ -3,13 +3,13 @@ addpath(genpath('..\mods'));
 % addpath(genpath('lib'));
 
 %% Get data
-src_path = '\\141.106.183.131\17439-FullBank';
+src_path = '\\burns.rcc.mcw.edu\AOIP\17439-FullBank\';
 src = dir(src_path);
 ignore = {'.'; '..'};
 BUILD_TAG = 'AO_2_3_SLO';
 hasAO2p3 = false(size(src));
 hasLocFile = hasAO2p3;
-for ii=1:numel(src)
+parfor ii=1:numel(src)
     if ~src(ii).isdir || any(strcmp(src(ii).name, ignore))
         continue;
     end
@@ -31,6 +31,27 @@ end
 %% Filter
 src = src(hasAO2p3 & hasLocFile);
 
+%% Open for manual viewing
+trg = uigetdir(src_path, 'Select output folder');
+if isnumeric(trg)
+    return;
+end
+for ii=1:numel(src)
+    loc_file = find_AO_location_file(...
+            fullfile(src(ii).folder, src(ii).name, BUILD_TAG));
+    winopen(loc_file.folder);
+    
+    re = questdlg('Copy this dataset?','Copy?','Yes','No','Quit','Yes');
+    switch re
+        case 'Quit'
+            break;
+        case 'No'
+            continue;
+        case 'Yes'
+            out_path = fullfile(trg, loc_file.folder(numel(src_path):end));
+            mkdir(out_path);
+            copyfile(loc_file.name, out_path);
+    end
+end
 
-
-
+% 790nm AND (confocal OR direct OR reflect) AND (.avi OR .mat)

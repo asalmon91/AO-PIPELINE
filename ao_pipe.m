@@ -192,7 +192,7 @@ for ii=1:numel(gui.root_path_list)
             single(getPccThr(search.name, opts.mod_order));
     else
         warning('PCC thresholds not found for ARFS, using defaults');
-        opts.pcc_thrs = ones(size(sys_opts.mod_order)).*0.01;
+        opts.pcc_thrs = ones(size(opts.mod_order)).*0.01;
     end
     save(fullfile(paths.root, pipe_data.filename), 'pipe_data', 'opts', 'paths')
 

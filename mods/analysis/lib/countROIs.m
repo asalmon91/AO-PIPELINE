@@ -39,10 +39,23 @@ for ii=1:numel(rois)
     
     %% Read image, extract ROI
     im = imread(fullfile(paths.mon_out, out_fname));
-    im = im(...
-        rois(ii).xywh(2)-rois(ii).xywh(4)/2:rois(ii).xywh(2)+rois(ii).xywh(4)/2, ... % y
-        rois(ii).xywh(1)-rois(ii).xywh(3)/2:rois(ii).xywh(1)+rois(ii).xywh(3)/2, ... % x
-        1); % image layer
+    try
+        im = im(...
+            rois(ii).xywh(2)-rois(ii).xywh(4)/2:rois(ii).xywh(2)+rois(ii).xywh(4)/2, ... % y
+            rois(ii).xywh(1)-rois(ii).xywh(3)/2:rois(ii).xywh(1)+rois(ii).xywh(3)/2, ... % x
+            1); % image layer
+    catch me
+        if strcmp(me.identifier, 'MATLAB:badsubscript')
+            warning(me.message)
+            warning('ROI could not be extracted from: %i, %i', ...
+                rois(ii).loc_deg(1), rois(ii).loc_deg(2));
+            rois(ii).success = false;
+            % Keep all the other metadata for diagnostics
+            continue;
+        else
+            rethrow(me);
+        end
+    end
     
     %% Count cones
     coords_xy = fx_cone_counting(im, count_handle, rois(ii).loc_deg);

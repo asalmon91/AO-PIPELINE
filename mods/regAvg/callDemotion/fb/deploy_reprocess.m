@@ -13,6 +13,18 @@ fid = py.open(dmp_ffname, 'w');
 py.cPickle.dump(pick, fid);
 fid.close();
 
+%% Update the .dmb as well for record keeping
+% Get .dmb file name
+dmb_ffname = strrep(dmp_ffname, '.dmp', '.dmb');
+fid = py.open(dmb_ffname, 'r');
+pick = py.pickle.load(fid);
+fid.close();
+old_thr = pick{'frame_strip_ncc_threshold'};
+pick{'frame_strip_ncc_threshold'} = cast(ncc_thr, class(old_thr));
+fid = py.open(dmb_ffname, 'w');
+py.cPickle.dump(pick, fid);
+fid.close();
+
 %% Get path to reprocessing script
 calling_fx_ffname = mfilename('fullpath');
 path_parts = strsplit(calling_fx_ffname, filesep);

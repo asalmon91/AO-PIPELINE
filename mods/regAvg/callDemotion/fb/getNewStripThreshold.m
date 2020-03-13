@@ -5,6 +5,9 @@ function new_thr = getNewStripThreshold(dmp_ffname, display_on, old_thr)
 % Test dmb
 % dmp_ffname = 'C:\Users\DevLab_811\workspace\pipe_test\BL_12063\AO_2_3_SLO\2019_07_11_OS\Processed\FULL\1_L1C1\tmp\BL_12063_775nm_OS_confocal_0001_1_L1C1_ref_117_lps_6_lbss_6.dmp';
 
+%% Constants
+THR_DEF = -3; % standard deviations away from the mean
+
 %% Get current python environment
 pe = pyenv;
 if str2double(pe.Version) >= 3
@@ -15,29 +18,10 @@ if str2double(pe.Version) >= 3
     end
 end
 
-%% Fix some kind of endline issue
-% Ask Rob
-% fid = py.open(dmp_ffname, 'rb');
-% text = fid.read().replace('\r\n','\n');
-% fid.read();
-% fid.close();
-% 
-% fid = py.open(dmp_ffname, 'wb');
-% fid.write(text);
-% fid.close();
-
 %% Load dmp
 fid = py.open(dmp_ffname, 'r');
 pick = py.pickle.load(fid);
 fid.close();
-
-%% Extract transforms
-% pick.keys()
-% ff_translation_info_rowshift = int64(pick{'full_frame_ncc'}{'row_shifts'});
-% ff_translation_info_colshift = int64(pick{'full_frame_ncc'}{'column_shifts'});
-% strip_translation_info = pick{'sequence_interval_data_list'};
-% exceed_thr_ids = uint16(pick{'acceptable_frames'})+1;
-% max_nccs = double(pick{'full_frame_ncc'}{'ncc_max_values'});
 
 %% Get distribution of all SR max NCCs
 n_frames = uint16(pick{'n_frames'});
@@ -56,7 +40,7 @@ all_strip_nccs(ref_frame, :) = [];
 all_strip_nccs = all_strip_nccs(~isnan(all_strip_nccs));
 
 % norm_all_strip_nccs = (all_strip_nccs - mean(all_strip_nccs(:)))./std(all_strip_nccs(:));
-new_thr = mean(all_strip_nccs(:)) - 1*std(all_strip_nccs(:));
+new_thr = mean(all_strip_nccs(:)) + THR_DEF*std(all_strip_nccs(:));
 
 if display_on
     figure;
@@ -70,13 +54,6 @@ if display_on
     hold off;
     legend({'Counts', 'Old threshold', 'New threshold'},'location','northwest')
 end
-% orig_thr = pick{'frame_strip_ncc_threshold'};
-% pick{'frame_strip_ncc_threshold'} = cast(thr, class(orig_thr));
-% 
-% fid = py.open(dmp_ffname, 'w');
-% py.cPickle.dump(pick, fid)
-% fid.close()
-% 
 % %% Check that this is on the python search path
 % if count(py.sys.path,'') == 0
 %     insert(py.sys.path,int32(0),'');

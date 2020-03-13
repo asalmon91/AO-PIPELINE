@@ -1,4 +1,4 @@
-function rois = getROIs(db, paths, opts, roi_sz_deg, roi_pos_tol)
+function rois = getROIs(db, paths, opts, roi_sz_deg, roi_tol_deg)
 %getROIs generates a grid of ROIs and the images that contain that best
 %match
 % This algorithm assumes a completely intact montage
@@ -22,8 +22,10 @@ roi_sz_px = roi_sz_deg*this_ppd;
 
 % ROI center position tolerance (allow shifting to avoid edges and bad
 % parts of the image
-if exist('roi_pos_tol', 'var') == 0 || isempty(roi_pos_tol)
-    roi_pos_tol = roi_sz_px*sqrt(2)/2 - (roi_sz_px/2);
+if exist('roi_tol_deg', 'var') == 0 || isempty(roi_tol_deg)
+    roi_tol_deg = 0.1;
+%     roi_pos_tol = roi_sz_px*sqrt(2)/2 - (roi_sz_px/2);
+    roi_pos_tol = roi_tol_deg*this_ppd;
 end
 
 %% Generate a 1° ROI grid
