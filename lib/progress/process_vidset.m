@@ -1,4 +1,4 @@
-function vid_set = process_vidset(vid_set, dsins, paths, opts, q)
+function vid_set = process_vidset(vid_set, dsins, paths, opts, ~)
 %process_vidset performs several processing steps: secondary modality
 %creation, registration and averaging, and statistical eye motion 
 % correction
@@ -28,7 +28,7 @@ end
 
 %% Secondary modalities
 vid_set = makeSecondaries(vid_set, paths.raw);
-send(q, vid_set);
+% send(q, vid_set);
 if vid_set.profiling
     vid_set.t_full_mods = clock;
 end
@@ -106,7 +106,7 @@ for ii=1:numel(opts.mod_order)
     if vid_set.profiling
         vid_set.t_proc_arfs = clock;
     end
-    send(q, vid_set);
+%     send(q, vid_set);
     
     %% Generate an acceptable image from each reference frame
     for jj=1:numel(fids)
@@ -219,8 +219,9 @@ for ii=1:numel(opts.mod_order)
                 %% DeMotion feedback
                 % Get output parameters
                 if status == 1
-                    [ht, ~, nFrames, nCrop, ~, tif_fname, ~] = ...
-                        getOutputSizeAndN(paths.imgs, dmb_fname, opts.mod_order{ii});
+                    [ht, ~, nFrames, nCrop, ~, tif_fname, contiguous] = ...
+                        getOutputSizeAndN(paths.imgs, dmb_fname, ...
+                        opts.mod_order{ii}, opts.n_frames);
                     tif_fnames = strrep(tif_fname, opts.mod_order{ii}, mods);
                     % todo: manage success criteria better
                 else
@@ -230,7 +231,7 @@ for ii=1:numel(opts.mod_order)
                 
                 % Check against criteria
                 if ht >= FAIL_HT && nCrop > FAIL_CROP && ...
-                        nFrames > opts.n_frames %&& f95 > opts.n_frames
+                        nFrames > opts.n_frames && contiguous
                     if vid_set.profiling
                         vid_set.t_proc_ra = clock;
                     end

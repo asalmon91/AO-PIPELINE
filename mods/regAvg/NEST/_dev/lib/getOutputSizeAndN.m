@@ -1,5 +1,5 @@
-function [ht, wd, nFrames, nCrop, tif_path, tif_fname, f95, cropErr] = ...
-    getOutputSizeAndN(out_proc, dmb_fname, current_modality)
+function [ht, wd, nFrames, nCrop, tif_path, tif_fname, contiguous, cropErr] = ...
+    getOutputSizeAndN(out_proc, dmb_fname, current_modality, min_frames)
 %getOutputSizeAndN determines results of demotion
 % todo: there is some weird bug with DeMotion where the SR .avi's don't
 % seem to match the registered image. In the SR .avi, you expect the
@@ -17,7 +17,7 @@ nCrop = 0;
 tif_path = '';
 tif_fname = '';
 cropErr = false;
-f95 = 0;
+contiguous = false;
 
 %% Find matching output tif
 [~,dmb_name,~] = fileparts(dmb_fname);
@@ -84,11 +84,46 @@ if exist('current_modality', 'var') ~=0 && ~isempty(current_modality)
         % A little bit of crop error at the corners never hurt anyone,
         % right?
         cropErr = true;
+        return;
     end
     
-    [N,edges] = histcounts(bin_map(:), 0:size(bin_sr_vid,3), ...
-        'normalization', 'cdf');
-    px_cdf = [1-N', edges(1:end-1)'];
+    %% Measure contiguity of strip-registration
+    if exist('min_frames', 'var') == 0 || isempty(min_frames)
+        return;
+    end
+    EDGE_CUTOFF = round(0.05*size(bin_map, 1));
+    row_contribution = mean(bin_map, 2);
+    contiguous = ~any(...
+        row_contribution(EDGE_CUTOFF:end-EDGE_CUTOFF) < min_frames);
+    
+    
+%     % DEV/DB : USED
+%     figure;
+%     subplot(1,2,1);
+%     imagesc(bin_map);
+%     subplot(1,2,2);
+%     plot(row_contribution, 1:size(bin_map,1), '-k')
+%     set(gca,'ydir','reverse','tickdir','out')
+%     axis tight
+%     hold on;
+%     xl = get(gca,'xlim');
+%     xlim([0, xl(end)])
+%     xl = get(gca,'xlim');
+%     plot(xl, ones(2,1).*EDGE_CUTOFF, ':r')
+%     plot(xl, ones(2,1).*(size(bin_map,1)-EDGE_CUTOFF), ':r')
+%     yl = get(gca,'ylim');
+%     plot([3,3], yl, '-r');
+%     plot(ones(2,1).*min_frames, ...
+%         [EDGE_CUTOFF, (size(bin_map,1)-EDGE_CUTOFF)], '--r');
+%     hold off;
+%     bool_str = {'False', 'True'};
+%     title(sprintf('Contiguous: %s', bool_str{contiguous+1}));
+%     % END DEV/DB
+    
+    % DEV/DB : NOT USED
+%     [N,edges] = histcounts(bin_map(:), 0:size(bin_sr_vid,3), ...
+%         'normalization', 'cdf');
+%     px_cdf = [1-N', edges(1:end-1)'];
     % f95 statistic: 95% of pixels are an average of N frames
 %     THR = 0.95;
 %     just_lower = max(px_cdf(px_cdf(:,1) < THR, 1));

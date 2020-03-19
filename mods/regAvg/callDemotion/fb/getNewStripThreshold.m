@@ -6,7 +6,7 @@ function new_thr = getNewStripThreshold(dmp_ffname, display_on, old_thr)
 % dmp_ffname = 'C:\Users\DevLab_811\workspace\pipe_test\BL_12063\AO_2_3_SLO\2019_07_11_OS\Processed\FULL\1_L1C1\tmp\BL_12063_775nm_OS_confocal_0001_1_L1C1_ref_117_lps_6_lbss_6.dmp';
 
 %% Constants
-THR_DEF = -3; % standard deviations away from the mean
+THR_DEF = -1; % standard deviations away from the mean
 
 %% Get current python environment
 pe = pyenv;
