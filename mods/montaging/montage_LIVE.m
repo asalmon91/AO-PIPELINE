@@ -34,7 +34,7 @@ if strcmp(pff.State, 'unavailable')
     % connections. The goal here is not a perfect montage, just to
     % identify poor connections
 %     all_img_fnames = vertcat(ld.mon.imgs.fnames);
-    prime_img_fnames = getNextMontage(ld);
+    prime_img_fnames = getNextMontage(ld, paths, opts.mod_order{1});
     if numel(prime_img_fnames) < 2
         return;
     end
@@ -95,6 +95,10 @@ if strcmp(pff.State, 'finished') && isempty(pff.Error)
                             break
                         end
                         for mm=1:numel(ld.vid.vid_set(ii).vids(jj).fids(kk).cluster)
+                            if ~ld.vid.vid_set(ii).vids(jj).fids(kk).cluster(mm).success
+                                continue;
+                            end
+                            
                             key = findImageInMonDB(ld, ...
                                 ld.vid.vid_set(ii).vids(jj).fids(kk).cluster(mm).out_fnames(1));
                             if ~all(key==0)
@@ -163,7 +167,7 @@ if strcmp(pff.State, 'finished') && isempty(pff.Error)
     update_pipe_progress(ld, paths, 'mon', gui);
 elseif ~isempty(pff.Error)
     % TODO: handle some error types
-    rethrow(pff.Error)
+    error(getReport(pff.Error))
 end
 
 

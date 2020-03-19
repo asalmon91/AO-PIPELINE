@@ -93,7 +93,7 @@ if num_workers > 1 && exist('parfor', 'builtin') ~= 0
 end
 
 %% LIVE LOOP
-while gui.run_live && ~live_data.done
+while isvalid(gui.fig) && gui.run_live && ~live_data.done
     %% Calibration Loop
     [live_data, pff_cal] = calibrate_LIVE(...
         live_data, paths, pff_cal, cpool, gui);
@@ -108,7 +108,7 @@ while gui.run_live && ~live_data.done
     
     %% Update live database
     live_data = updateLIVE(paths, live_data, sys_opts, gui, mon_app);
-    if ~isvalid(gui) || gui.quitting
+    if ~isvalid(gui.fig) || gui.quitting
         return;
     end
     

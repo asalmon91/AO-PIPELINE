@@ -3,6 +3,11 @@ function [status, stdout] = deploy_callDemotion(...
 %deploy_callDemotion calls a python script which contains the relevant
 %registration and averaging modules in Demotion
 
+%% Optional Inputs
+if ~exist('outputImages', 'var') || isempty(outputImages)
+    outputImages = true;
+end
+
 %% Send .dmb to DeMotion
 calling_fx_ffname = mfilename('fullpath');
 path_parts = strsplit(calling_fx_ffname, filesep);

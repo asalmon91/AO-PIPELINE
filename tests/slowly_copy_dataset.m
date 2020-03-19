@@ -11,6 +11,7 @@ WRITE_LAG = 1/FR; % (seconds)
 N_PAD = 4;
 VID_NUM_EXP = sprintf('%s%s%s', ...
     '[_]', repmat('\d', 1, N_PAD), '[.]mat');
+USE_REAL_DELAYS = false; % Change this to true if transferring between two local locations
 
 %% Get source and target directories
 % src = uigetdir('.', 'Select source root directory');
@@ -21,8 +22,8 @@ VID_NUM_EXP = sprintf('%s%s%s', ...
 % if isnumeric(trg)
 %     return;
 % end
-src = '\\141.106.183.131\17439-FullBank\BL_12063\AO_2_3_SLO\2019_07_11_OS';
-trg = 'C:\Users\DevLab_811\workspace\pipe_test\BL_12063\AO_2_3_SLO\2019_07_11_OS';
+src = '\\burns.rcc.mcw.edu\AOIP\17439-FullBank\JC_0605\AO_2_3_SLO\2019_06_04_OD';
+trg = 'D:\workspace\JC_0605\AO_2_3_SLO\2019_06_04_OD';
 src_paths = initPaths(src);
 trg_paths = initPaths(trg);
 
@@ -66,8 +67,15 @@ cal_avi_dir = cal_avi_dir(I);
 %% Get delays from videos
 delays = diff([cal_avi_dir.datenum])*(24*3600);
 
+%% Start copying calibration files
 for ii=1:numel(cal_avi_dir)
     if any(contains(cal_avi_dir(ii).name, IGNORE_WL))
+        continue;
+    end
+    
+    % Don't overwrite
+    out_ffname = fullfile(trg_paths.cal, cal_avi_dir(ii).name);
+    if exist(out_ffname, 'file') ~= 0
         continue;
     end
     
@@ -90,15 +98,16 @@ for ii=1:numel(cal_avi_dir)
         'optical_scanners_settings');
     
     % Write video
-    fn_write_AVI(fullfile(trg_paths.cal, cal_avi_dir(ii).name), vid, ...
-        FR, wb, WRITE_LAG)
+    fn_write_AVI(out_ffname, vid, FR, wb, WRITE_LAG)
     
     if ii < numel(cal_avi_dir)
         if delays(ii) < 1
             delays(ii) = 5;
         end
         waitbar(1, wb, sprintf('%is delay.', round(delays(ii))));
-%         pause(delays(ii));
+        if USE_REAL_DELAYS
+            pause(delays(ii));
+        end
     end
 end
 
@@ -148,13 +157,40 @@ for ii=1:numel(u_vid_nums)
         continue;
     end
     
+    % Don't overwrite
+    out_ffnames = cell(size(current_avis));
+    trg_exists = false(size(current_avis));
+    for jj=1:numel(current_avis)
+        out_ffnames{jj} = fullfile(trg_paths.raw, current_avis{jj});
+        trg_exists(jj) = exist(out_ffnames{jj}, 'file') ~= 0;
+    end
+    if all(trg_exists)
+        continue;
+    end
+    
     %% Read all videos in this set
     vids = cell(size(current_avis));
     vws = vids;
     for jj=1:numel(current_avis)
         % Read
-        vids{jj} = fn_read_AVI(...
-            fullfile(src_paths.raw, current_avis{jj}), wb);
+        success = false;
+        k = 0;
+        max_iter = 100;
+        while ~success
+            try
+                k=k+1;
+                if k > max_iter
+                    error('Max iterations exceeded');
+                end
+                vids{jj} = fn_read_AVI(...
+                    fullfile(src_paths.raw, current_avis{jj}), wb);
+            catch err
+                % Sometimes it loses access to videos on network drives,
+                % just try again until it works
+                continue;
+            end
+            success = true;
+        end
     end
     
     %% Update position file
@@ -205,8 +241,9 @@ for ii=1:numel(u_vid_nums)
     %% Simulate delay between "acquisitions"
     if ii < numel(u_vid_nums)
         waitbar(1, wb, sprintf('%is delay.', round(delays(ii))));
-        pause(delays(ii));
-%         pause();
+        if USE_REAL_DELAYS
+            pause(delays(ii));
+        end
     end
 end
 close(wb);

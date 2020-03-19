@@ -32,7 +32,7 @@ if strcmp(pff.State, 'finished') && isempty(pff.Error)
     update_pipe_progress(ld,paths,'cal',gui);
 elseif ~isempty(pff.Error)
     % TODO: handle error
-    error(pff.Error)
+    error(getReport(pff.Error))
     % Reset future object
 %     pff = parallel.FevalFuture();
 end

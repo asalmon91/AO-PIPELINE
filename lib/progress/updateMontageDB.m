@@ -17,6 +17,7 @@ if isempty(ld.mon) || ~isfield(ld.mon, 'loc_file') || isempty(ld.mon.loc_file)
     ld.mon.loc_file = find_AO_location_file(paths.root);
     if ~isempty(ld.mon.loc_file)
         read_loc_file = true;
+        file_info = dir(ld.mon.loc_file.name);
     end
 else
     % Check for updates
@@ -116,7 +117,7 @@ end
 %% Identify unexpected breaks
 if numel(ld.mon.montages) > 1
     [suggested_locs, ld.mon.breaks] = findBreaks(...
-        ld.mon.montages, ld.mon.loc_data, ld.mon.opts);
+        ld, ld.mon.montages, ld.mon.loc_data, ld.mon.opts);
     fprintf('Consider acquiring new images at the following locations:\n');
     disp(suggested_locs);
 elseif numel(ld.mon.montages) == 1

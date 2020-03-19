@@ -5,6 +5,8 @@ function [live_data, opts, paths, pipe_data] = load_previous_session(in_path, pi
 % todo: replace with varargout
 live_data = [];
 pipe_data = [];
+paths = [];
+opts = [];
 
 %% Parse pipe_mode
 switch pipe_mode
@@ -22,6 +24,10 @@ end
 if exist(fullfile(in_path, fname), 'file') ~= 0
     % First call and running on a previously run dataset
     load(fullfile(in_path, fname), varname, 'paths', 'opts');
+    if ~exist('paths','var') || isempty(paths)
+        paths = initPaths(in_path);
+    end
+    
 else
     % Initialize live structure
     live_data = init_live_data(fname);

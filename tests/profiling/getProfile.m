@@ -1,6 +1,8 @@
 function getProfile(live_data_file)
 %getProfile profiles processing time for the live pipeline
 
+% This is totally broken
+
 load(live_data_file, 'live_data')
 root_path = fileparts(live_data_file);
 paths = initPaths(root_path);
@@ -8,7 +10,7 @@ paths = initPaths(root_path);
 % Get number of processing time fields
 fn = fieldnames(live_data.vid.vid_set(1));
 fn(~contains(fn, 't_proc')) = [];
-
+remove = false(numel(live_data.vid.vid_set), 1);
 proc_times = zeros(numel(live_data.vid.vid_set), 2+numel(fn));
 for ii=1:numel(live_data.vid.vid_set)
     % Get time of creation of a video in this set
@@ -35,13 +37,20 @@ for ii=1:numel(live_data.vid.vid_set)
     proc_times(ii,7) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_arfs));
     proc_times(ii,8) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_ra));
     proc_times(ii,9) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_end));
-    proc_times(ii,10) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_mon));
+    try
+        proc_times(ii,10) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_mon));
+    catch
+        remove(ii) = true;
+    end
     
     % Get time processing ended
     
     % Subtract all by creation time
     proc_times(ii, :) = proc_times(ii, :) - proc_times(ii, 3);
 end
+% proc_times(remove, :) = [];
+% proc_times(:,end) = [];
+
 
 figure; plot(proc_times', 'k')
 set(gca, ...

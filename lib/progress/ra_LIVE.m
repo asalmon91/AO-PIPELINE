@@ -16,7 +16,9 @@ if strcmp(pff.State, 'unavailable')
         dsin_idx = matchVidsetToDsin(ld.vid.vid_set(ld.vid.current_idx), ld.cal.dsin);
         this_dsin = ld.cal.dsin(dsin_idx);
         pff = parfeval(pool_id, @quickRA, 1, ld, paths, this_dsin, opts);
-%         quickRA(ld, paths, this_dsin, opts);
+        % DEV/DB
+        %quickRA(ld, paths, this_dsin, opts);
+        % END DEV/DB
         update_pipe_progress(ld, paths, 'vid', gui)
     end
 end
@@ -34,7 +36,7 @@ if strcmp(pff.State, 'finished') && isempty(pff.Error)
     update_pipe_progress(ld, paths, 'vid', gui)
 elseif ~isempty(pff.Error)
     % TODO: handle error
-    disp(pff.Error)
+    error(getReport(pff.Error))
     % Reset future object
 %     pff = parallel.FevalFuture();
 end

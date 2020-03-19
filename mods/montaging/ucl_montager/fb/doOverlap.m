@@ -24,7 +24,7 @@ miny = [tlc_xy_a(2), tlc_xy_b(2)];
 maxy = [brc_xy_a(2), brc_xy_b(2)];
 
 amount = max(min(maxx) - max(minx), 0) * max(min(maxy) - max(miny), 0);
-overlap = amount == 0;
+overlap = amount > 0;
 
 % Get amount of overlap
 % if ~overlap

@@ -27,7 +27,6 @@ vid = single(gpuArray(fn_read_AVI(fullfile(paths.raw, prime_fname))));
 this_vidset.t_proc_read = clock;
 
 %% Desinusoid
-%todo: Make function apply dsin
 vid = desinusoidVideo(vid, this_dsin.mat);
 % dsin_vid = gpuArray(zeros(size(vid,1), size(this_dsin.mat, 1), ...
 %     size(vid, 3), 'single'));
@@ -142,6 +141,7 @@ else
                 prime_out_fnames{k};
                 split_out_fnames{k};
                 avg_out_fnames{k}};
+            this_vidset.vids(1).fids(ii).cluster(jj).success = true;
             k=k+1;
         end
     end

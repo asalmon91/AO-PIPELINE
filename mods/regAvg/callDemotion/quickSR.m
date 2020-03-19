@@ -3,7 +3,7 @@ function [fids, success] = quickSR(vid, vid_num, fids, this_dsin, paths, ...
 %quickSR quick Strip-registration
 
 %% Definitions
-success_crit    = 1/2 * size(vid,1);
+success_crit    = 3/4 * size(vid,1);
 short_circuit   = 1/3 * size(vid,1);
 last_height     = 0;
 
@@ -60,6 +60,7 @@ for ii=1:numel(fids)
         lps     = 25;
         lbss    = 10;
         ncc_thr = 0.1;
+        last_height = 0;
         while ~success
             [~, dmb_fname, status, stdout] = deploy_createDmb(...
                 'C:\Python27\python.exe', ...
@@ -99,7 +100,7 @@ for ii=1:numel(fids)
                 success = true;
             else
                 % Check to see if this at least helped
-                if im_data.Height > last_height
+                if im_data.Height >= last_height
                     % it may be helping. try again
                     last_height = im_data.Height;
                     lps = lps*2;
@@ -117,36 +118,39 @@ for ii=1:numel(fids)
         end
         
         %% After demotion, create split and average images
-        if numel(find(contains(img_fnames, 'direct'))) == 1 && ...
-                numel(find(contains(img_fnames, 'reflect'))) == 1
-            % Prep file names
-            direct_fname = img_fnames{contains(img_fnames, 'direct')};
-            reflect_fname = img_fnames{contains(img_fnames, 'reflect')};
-            split_fname = strrep(direct_fname, 'direct', 'split_det');
-            avg_fname = strrep(direct_fname, 'direct', 'avg');
-            % Read
-            direct_img = single(imread(fullfile(img_path, direct_fname)));
-            reflect_img = single(imread(fullfile(img_path, reflect_fname)));
-            % Create split and avg images
-            split_img = contrast_stretch(...
-                (direct_img - reflect_img) ./ (direct_img + reflect_img));
-            avg_img = contrast_stretch((direct_img + reflect_img) ./ 2);
+        if success
+            if numel(find(contains(img_fnames, 'direct'))) == 1 && ...
+                    numel(find(contains(img_fnames, 'reflect'))) == 1
+                % Prep file names
+                direct_fname = img_fnames{contains(img_fnames, 'direct')};
+                reflect_fname = img_fnames{contains(img_fnames, 'reflect')};
+                split_fname = strrep(direct_fname, 'direct', 'split_det');
+                avg_fname = strrep(direct_fname, 'direct', 'avg');
+                % Read
+                direct_img = single(imread(fullfile(img_path, direct_fname)));
+                reflect_img = single(imread(fullfile(img_path, reflect_fname)));
+                % Create split and avg images
+                split_img = contrast_stretch(...
+                    (direct_img - reflect_img) ./ (direct_img + reflect_img));
+                avg_img = contrast_stretch((direct_img + reflect_img) ./ 2);
+
+                % Write
+                imwrite(split_img, fullfile(img_path, split_fname));
+                imwrite(avg_img, fullfile(img_path, avg_fname));
+
+                % Add to output
+                out_fnames = [out_fnames; {split_fname; avg_fname}]; %#ok<AGROW>
+            end
+            fids(ii).cluster(jj).out_fnames = out_fnames;
             
-            % Write
-            imwrite(split_img, fullfile(img_path, split_fname));
-            imwrite(avg_img, fullfile(img_path, avg_fname));
-            
-            % Add to output
-            out_fnames = [out_fnames; {split_fname; avg_fname}]; %#ok<AGROW>
+
+            %% Gather to whole processed directory
+            for mm=1:numel(out_fnames)
+                copyfile(fullfile(img_path, out_fnames{mm}), ...
+                    paths.out);
+            end
         end
-        fids(ii).cluster(jj).out_fnames = out_fnames;
-        
-        %% Gather to whole processed directory
-        for mm=1:numel(out_fnames)
-            copyfile(fullfile(img_path, out_fnames{mm}), ...
-                paths.out);
-        end
-        
+        fids(ii).cluster(jj).success = success;
         %% Delete temporary path
         rmdir(fullfile(tmp_path, '..'), 's')
     end

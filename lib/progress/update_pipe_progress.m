@@ -147,6 +147,9 @@ switch module
                 for jj=1:numel(live_data.vid.vid_set(ii).vids)
                     for kk=1:numel(live_data.vid.vid_set(ii).vids(jj).fids)
                         for mm=1:numel(live_data.vid.vid_set(ii).vids(jj).fids(kk).cluster)
+                            if ~live_data.vid.vid_set(ii).vids(jj).fids(kk).cluster(mm).success
+                                continue;
+                            end
                             key = findImageInMonDB(live_data, ...
                                 live_data.vid.vid_set(ii).vids(jj).fids(kk).cluster(mm).out_fnames(1));
                             if ~all(key == 0)
@@ -232,6 +235,10 @@ switch module
                 for jj=1:numel(live_data.vid.vid_set(ii).vids)
                     for kk=1:numel(live_data.vid.vid_set(ii).vids(jj).fids)
                         for mm=1:numel(live_data.vid.vid_set(ii).vids(jj).fids(kk).cluster)
+                            if ~live_data.vid.vid_set(ii).vids(jj).fids(kk).cluster(mm).success
+                                continue;
+                            end
+                            
                             k=k+1;
                             out_data{k, num_idx} = this_vidnum;
                             out_data{k, fix_idx} = this_ex_loc;

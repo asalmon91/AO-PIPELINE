@@ -1,4 +1,4 @@
-function [suggested_locations, break_vidnums] = findBreaks(montages, loc_data, opts)
+function [suggested_locations, break_vidnums] = findBreaks(db, montages, loc_data, opts)
 %findBreaks identifies breaks in the montage and suggests acquisition
 %locations
 
@@ -24,11 +24,18 @@ for ii=1:numel(montages)
     for jj=1:numel(montages(ii).txfms)
         % Determine video number
         [~,img_name,~] = fileparts(montages(ii).txfms{jj}{1});
-        vn_idx = regexp(img_name, '_\d\d\d\d_', 'once');
-        if isempty(vn_idx)
-            error('Failed to extract video number from %s', img_name);
-        end
-        this_vidnum = img_name(vn_idx+1:vn_idx+4); % warning: will break if padding ever changes
+        key = matchImgToVid(db.vid.vid_set, img_name);
+%         this_vidnum = db.vid.vid_set(key(1)).vidnum;
+        this_vidnum = db.vid.vid_set(key(1)).getVidNumStr;
+        
+%         vn_idx = regexp(img_name, '_\d\d\d\d_');
+%         if isempty(vn_idx)
+%             error('Failed to extract video number from %s', img_name);
+%         end
+%         if numel(vn_idx) > 1
+%             % Sometimes the ID fits this description too. We should
+%         end
+%         this_vidnum = img_name(vn_idx+1:vn_idx+4); % warning: will break if padding ever changes
         
         % Determine index in the location data
         loc_idx = strcmp(this_vidnum, loc_data.vidnums);
