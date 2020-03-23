@@ -1,62 +1,149 @@
-function getProfile(live_data_file)
+function getProfile(db_ffname)
 %getProfile profiles processing time for the live pipeline
 
-% This is totally broken
+% Extract data about the file
+[root_path, db_name, db_ext] = fileparts(db_ffname);
+if ~strcmpi(db_ext, '.mat')
+    error('Input must be a .mat');
+end
 
-load(live_data_file, 'live_data')
-root_path = fileparts(live_data_file);
-paths = initPaths(root_path);
+% Determine db_type
+if contains(db_name, 'FULL')
+    db_type = 'full';
+elseif contains(db_name, 'LIVE')
+    db_type = 'live';
+else
+    error('Unrecognized database type: %s', db_name);
+end
 
-% Get number of processing time fields
-fn = fieldnames(live_data.vid.vid_set(1));
-fn(~contains(fn, 't_proc')) = [];
-remove = false(numel(live_data.vid.vid_set), 1);
-proc_times = zeros(numel(live_data.vid.vid_set), 2+numel(fn));
-for ii=1:numel(live_data.vid.vid_set)
-    % Get time of creation of a video in this set
-    vid_ffname = fullfile(paths.raw, live_data.vid.vid_set(ii).vids(1).filename);
-    d = System.IO.File.GetCreationTime(vid_ffname);
-    t_create = datetime(d.Year, d.Month, d.Day, d.Hour, d.Minute, d.Second);
-    proc_times(ii,1) = days2sec(datenum(t_create));
-    
-    % Get time this video was detected
-    t_detect = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_create));
-    proc_times(ii,2) = t_detect;
-    
-    % Get last modified for that video
-    this_vid = dir(vid_ffname);
-    t_last_mod = days2sec(this_vid.datenum);
-    proc_times(ii,3) = t_last_mod;
-    
-    % Get time processing started
-    proc_times(ii,4) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_start));
-    
-    % Get intermediary processing times
-    proc_times(ii,5) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_read));
-    proc_times(ii,6) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_dsind));
-    proc_times(ii,7) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_arfs));
-    proc_times(ii,8) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_ra));
-    proc_times(ii,9) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_end));
-    try
-        proc_times(ii,10) = days2sec(clock2datenum(live_data.vid.vid_set(ii).t_proc_mon));
-    catch
-        remove(ii) = true;
+% Set up the different profiles
+switch db_type
+    case 'live'
+        pipe_var_name = 'live_data';
+        paths = initPaths(root_path);
+        % Some hard-coding going on here
+        % These things measured offline and are only relevant for live mode:
+        import System.IO.File.GetCreationTime
+        T_OFFLINE = {
+            'Created';
+            'Written'};
+        % These things measured online:
+        T_LUT = {
+            't_proc_create',    'Detected';
+            't_proc_start',     'R/A begin';
+            't_proc_read',      'Read';
+            't_proc_dsind',     'Desinusoided';
+            't_proc_arfs',      'Reference Frames';
+            't_proc_ra',        'R/A end';
+            't_proc_end',       'R/A output';
+            't_proc_mon',       'Montaged'};
+        
+    case 'full'
+        pipe_var_name = 'pipe_data';
+        T_LUT = {
+            't_proc_create',    'Detected';
+            't_full_mods',      'Secondaries';
+            't_proc_start',     'R/A begin';
+            't_proc_read',      'Read';
+            't_proc_dsind',     'Desinusoided';
+            't_proc_arfs',      'Reference Frames';
+            't_proc_ra',        'R/A end';
+            't_proc_emr',       'Dewarping';
+            't_proc_end',       'R/A output';
+            't_proc_mon',       'Montaged'};
+        
+    otherwise
+        error('Unrecognized input: %s, options are: "live" and "full".', db_type)
+end
+
+% Rename the pipe variable to db
+db = load(db_ffname, pipe_var_name);
+fn = fieldnames(db);
+db = db.(fn{1});
+
+%% Measure times for each video set
+n_vids = numel(db.vid.vid_set);
+if n_vids == 0
+    error('No video data for %s', db_ffname);
+end
+all_times = nan(n_vids, size(T_LUT, 1));
+for ii=1:n_vids
+    for jj=1:size(T_LUT, 1)
+        this_clock = db.vid.vid_set(ii).(T_LUT{jj,1});
+        if isempty(this_clock)
+            warning('Missing clock data for video %i, module: %s.', ...
+                db.vid.vid_set(ii).vidnum, T_LUT{jj,2});
+            continue;
+        end
+        
+        all_times(ii,jj) = days2sec(clock2datenum(this_clock));
+    end
+end
+
+%% Add offline measurements for live pipe
+if strcmp(db_type, 'live')
+    offline_times = nan(n_vids, numel(T_OFFLINE));
+    for ii=1:n_vids
+        vid_ffname = fullfile(paths.raw, db.vid.vid_set(ii).vids(1).filename);
+        
+        for jj=1:numel(T_OFFLINE)
+            if strcmpi(T_OFFLINE{jj}, 'created')
+                % Get time of creation
+                % Import statement in earlier switch:case
+                d = GetCreationTime(vid_ffname);
+                t_create = datetime(d.Year, d.Month, d.Day, d.Hour, d.Minute, d.Second);
+                offline_times(ii,jj) = days2sec(datenum(t_create));
+            elseif strcmpi(T_OFFLINE{jj}, 'written')
+                % Get last-modified time
+                this_vid = dir(vid_ffname);
+                t_last_mod = days2sec(this_vid.datenum);
+                offline_times(ii,jj) = t_last_mod;
+            else
+                error('Unrecognized input in T_OFFLINE');
+            end
+        end
     end
     
-    % Get time processing ended
-    
-    % Subtract all by creation time
-    proc_times(ii, :) = proc_times(ii, :) - proc_times(ii, 3);
+    % Concatenate offline and online measurements
+    all_times = [offline_times, all_times];
+    labels = [T_OFFLINE; T_LUT(:,2)];
+else
+    labels = T_LUT(:,2);
 end
-% proc_times(remove, :) = [];
-% proc_times(:,end) = [];
 
+%% Set reference point
+if strcmpi(db_type, 'live')
+    ref_idx = strcmpi(labels, 'written');
+% 	ref_idx = strcmpi(labels, 'detected');
+else
+    % todo: should have a more general "start" time for full
+    ref_ixd = strcmpi(labels, 'secondaries'); 
+end
 
-figure; plot(proc_times', 'k')
+all_times = all_times - all_times(:, ref_idx);
+
+% temporarily ignore first two
+% remove = any(isnan(all_times), 2);
+% all_times = all_times(~remove, :);
+% all_times = all_times(:, 3:end);
+% labels = labels(3:end);
+
+figure; plot(all_times', 'k')
 set(gca, ...
-    'XTick', 1:size(proc_times,2), ...
-    'XTickLabel', {'Created', 'Detected', 'Written', 'Started', 'Read', 'Desinusoided', 'ARFS', 'Demotion', 'R/A', 'Montaged'}, ...
+    'XTick', 1:numel(labels), ...
+    'XTickLabel', labels, ...
     'XTickLabelRotation', 30);
+xlabel('Processing Stage');
+ylabel('Time (s)');
+
+% Get time / module
+rel_times = diff(all_times, 1, 2);
+mean_rel_times = mean(rel_times, 1);
+std_rel_times = std(rel_times, [], 1);
+
+figure;
+boxplot(rel_times, labels(2:end))
+set(gca, 'XTickLabelRotation', 30);
 xlabel('Processing Stage');
 ylabel('Time (s)');
 

@@ -28,7 +28,13 @@ if isfield(live_data, 'gui_handles') && ~isempty(live_data.gui_handles)
     live_data = rmfield(live_data, 'gui_handles');
 end
 % Save
-save(fullfile(paths.root, live_data.filename), 'live_data', 'opts');
+db_ffname = fullfile(paths.root, live_data.filename);
+if exist(db_ffname, 'file') == 0
+	save(db_ffname, 'live_data', 'paths', 'opts');
+elseif isfield(live_data, 'state_changed') && live_data.state_changed
+	save(db_ffname, 'live_data', 'paths', 'opts', '-append');
+	live_data.state_changed = false;
+end
 % Put in back on
 if exist('guih', 'var') && ~isempty(guih)
     live_data.gui_handles = guih;

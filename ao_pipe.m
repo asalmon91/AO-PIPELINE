@@ -173,8 +173,10 @@ for ii=1:numel(gui.root_path_list)
     end
     
     %% Update options
+    % todo: this might break in batch mode
+    % Output modalities must be overwritten
+    opts.mod_order = gui.mod_order_uit.Data(:,1)';
     if isempty(opts)
-        opts.mod_order      = gui.mod_order_uit.Data(:,1)';
         opts.lambda_order   = cell2mat(cellfun(@str2double, ...
             gui.mod_order_uit.Data(:,2)', 'uniformoutput', false));
         opts.n_frames = gui.n_frames_full_txt.Value;

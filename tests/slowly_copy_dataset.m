@@ -1,6 +1,7 @@
 %% Imports
 addpath(genpath(fullfile('..', 'lib')));
 addpath(genpath(fullfile('..', 'mods')));
+import System.IO.File.GetCreationTime
 
 %% Constants
 IGNORE_WL = {'680nm'};
@@ -11,7 +12,7 @@ WRITE_LAG = 1/FR; % (seconds)
 N_PAD = 4;
 VID_NUM_EXP = sprintf('%s%s%s', ...
     '[_]', repmat('\d', 1, N_PAD), '[.]mat');
-USE_REAL_DELAYS = false; % Change this to true if transferring between two local locations
+USE_REAL_DELAYS = true; % Change this to true if transferring between two local locations
 
 %% Get source and target directories
 % src = uigetdir('.', 'Select source root directory');
@@ -22,7 +23,7 @@ USE_REAL_DELAYS = false; % Change this to true if transferring between two local
 % if isnumeric(trg)
 %     return;
 % end
-src = '\\burns.rcc.mcw.edu\AOIP\17439-FullBank\JC_0605\AO_2_3_SLO\2019_06_04_OD';
+src = 'D:\workspace\JC_0605\src\2019_06_04_OD';
 trg = 'D:\workspace\JC_0605\AO_2_3_SLO\2019_06_04_OD';
 src_paths = initPaths(src);
 trg_paths = initPaths(trg);
@@ -60,12 +61,21 @@ if exist(trg_paths.cal, 'dir') == 0
 end
 cal_avi_dir = dir(fullfile(src_paths.cal, '*.avi'));
 
-% Sort calibration files by datenum to avoid alphabet bias
-[~,I] = sort([cal_avi_dir.datenum], 'ascend');
+%% Get delays from videos
+create_times = zeros(size(cal_avi_dir));
+for ii=1:numel(create_times)
+	d = GetCreationTime(...
+		fullfile(src_paths.cal, cal_avi_dir(ii).name));
+	t_create = datetime(d.Year, d.Month, d.Day, d.Hour, d.Minute, d.Second);
+	create_times(ii) = datenum(t_create)*(24*3600);
+end
+% Sort to avoid alphabetic bias
+[create_times, I] = sort(create_times, 'ascend');
 cal_avi_dir = cal_avi_dir(I);
 
-%% Get delays from videos
-delays = diff([cal_avi_dir.datenum])*(24*3600);
+% Get delays
+delays = diff(create_times);
+delays = [delays; 0]; % Add a zero at the end to move on to videos with no delay
 
 %% Start copying calibration files
 for ii=1:numel(cal_avi_dir)

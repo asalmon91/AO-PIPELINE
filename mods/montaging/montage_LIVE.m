@@ -102,9 +102,24 @@ if strcmp(pff.State, 'finished') && isempty(pff.Error)
                             key = findImageInMonDB(ld, ...
                                 ld.vid.vid_set(ii).vids(jj).fids(kk).cluster(mm).out_fnames(1));
                             if ~all(key==0)
-                                found_in_montage = true;
-                                ld.vid.vid_set(ii).t_proc_mon = clock;
-                                break
+                                % It doesn't count if it's not attached to an image from a
+								% different video
+								% Get video numbers for all videos in this
+								% montage
+								all_ffnames = cellfun(@(x) x{1}, ld.mon.montages(key(1)).txfms, 'uniformoutput', false)';
+								[~, all_names, all_exts] = cellfun(@fileparts, all_ffnames, 'uniformoutput', false);
+								all_fnames = cellfun(@(x,y) [x, y], all_names, all_exts, 'uniformoutput', false);
+								all_vn = zeros(size(all_fnames));
+								for nn=1:numel(all_fnames)
+									k = matchImgToVid(ld.vid.vid_set, all_fnames{nn});
+									all_vn(nn) = ld.vid.vid_set(k(1)).vidnum;
+								end
+								all_vn = unique(all_vn);
+								if ~all(all_vn == ld.vid.vid_set(ii).vidnum)
+									found_in_montage = true;
+									ld.vid.vid_set(ii).t_proc_mon = clock;
+									break;
+								end
                             end
                         end
                     end
@@ -165,6 +180,7 @@ if strcmp(pff.State, 'finished') && isempty(pff.Error)
     % Reset future object
     pff = parallel.FevalFuture();
     update_pipe_progress(ld, paths, 'mon', gui);
+	ld.state_changed = true;
 elseif ~isempty(pff.Error)
     % TODO: handle some error types
     error(getReport(pff.Error))
