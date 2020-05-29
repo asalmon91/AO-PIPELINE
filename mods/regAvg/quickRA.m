@@ -1,12 +1,10 @@
-function this_vidset = quickRA(ld, paths, this_dsin, opts)
+function this_vidset = quickRA(this_vidset, paths, this_dsin, opts, pcc_thrs)
 %quickRA is a quick registration and averaging method for AOSLO images
 %   These will be subject to distortion from eye motion, so these are not
 %   meant to be used for measurement. This is just to get an idea of the
 %   coverage of retinal area
 
-%% Get current vidset for processing
-this_vidset = ld.vid.vid_set(ld.vid.current_idx);
-this_vidset.processing = true;
+%% Start clock
 this_vidset.t_proc_start = clock;
 
 %% Get primary and secondary modality information
@@ -23,24 +21,44 @@ prime_fname = fnames{primary_mod & primary_wavelength};
 sec_fnames = fnames(~(primary_mod & primary_wavelength));
 
 %% Read primary sequence
-vid = single(gpuArray(fn_read_AVI(fullfile(paths.raw, prime_fname))));
+vid = fn_read_AVI(fullfile(paths.raw, prime_fname));
+try
+	vid = gpuArray(vid);
+catch
+	
+end
+vid = single(vid);
 this_vidset.t_proc_read = clock;
 
 %% Desinusoid
-vid = desinusoidVideo(vid, this_dsin.mat);
-% dsin_vid = gpuArray(zeros(size(vid,1), size(this_dsin.mat, 1), ...
-%     size(vid, 3), 'single'));
-% for ii=1:size(vid, 3)
-%     dsin_vid(:,:,ii) = vid(:,:,ii) * this_dsin.mat';
-% end
-% vid = dsin_vid; clear dsin_vid;
+try
+	vid = desinusoidVideo(vid, this_dsin.mat);
+catch me
+	if strcmp(me.identifier, 'parallel:gpu:array:OOM')
+		vid = desinusoidVideo(gather(vid), this_dsin.mat);
+	else
+		rethrow(me);
+	end
+end
 this_vidset.t_proc_dsind = clock;
 
 %% Select reference frames
-% todo: make mfpc an option
-frames = arfs(vid, ...
-    'pcc_thr', ld.vid.arfs_opts.pcc_thrs(1), ...
-    'mfpc', 10);
+if exist('pcc_thrs', 'var') == 0 || isempty(pcc_thrs)
+	pcc_thrs = 0.01;
+end
+try
+	frames = arfs(vid, ...
+		'pcc_thr', pcc_thrs(1), ...
+		'mfpc', opts.n_frames);
+catch me
+	if strcmp(me.identifier, 'parallel:gpu:array:OOM')
+		frames = arfs(gather(vid), ...
+			'pcc_thr', pcc_thrs(1), ...
+			'mfpc', opts.n_frames);
+	else
+		rethrow(me)
+	end
+end
 fids = get_best_n_frames_per_cluster(frames, opts.n_frames);
 % Remove clusters with less than the number requested
 % todo: functionalize
@@ -73,13 +91,31 @@ this_vidset.t_proc_arfs = clock;
 % todo: find a more efficient approach that doesn't require so much
 % overhead
 if opts.strip_reg
-    this_vidset.vids(1).fids = quickSR(vid, this_vidset.vidnum, fids, ...
-        this_dsin, paths, prime_fname, sec_fnames);
+	try
+		this_vidset.vids(1).fids = quickSR(vid, this_vidset.vidnum, fids, ...
+			this_dsin, paths, prime_fname, sec_fnames);
+	catch me
+		if strcmp(me.identifier, 'parallel:gpu:array:OOM')
+			this_vidset.vids(1).fids = quickSR(gather(vid), this_vidset.vidnum, fids, ...
+			this_dsin, paths, prime_fname, sec_fnames);
+		else
+			rethrow(me);
+		end
+	end
 else
 
     %% Full-frame register these frames
-    [ffr_imgs, fids] = quickFFR(vid, fids);
-
+	try
+		[ffr_imgs, fids] = quickFFR(vid, fids);
+	catch me
+		if strcmp(me.identifier, 'parallel:gpu:array:OOM')
+			[ffr_imgs, fids] = quickFFR(gather(vid), fids);
+		else
+			rethrow(me);
+		end
+	end
+		
+		
     % Read secondaries, apply txfms, create other mods, write images
     sec_ffr_imgs = cell(numel(ffr_imgs), 2);
     for ii=1:numel(sec_fnames)

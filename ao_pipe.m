@@ -74,8 +74,9 @@ if gui.run_live
     % feedback, so it's probably fine to hard-code
     mon_app = montage_display_App(gui.mod_order_uit.Data);
     
-    %% Set up queues
-    [pff_cal, ~, pff_vid, ~, pff_mon, ~] = initQueues();
+    %% Set up tasks
+%     [pff_cal, ~, pff_vid, ~, pff_mon, ~] = initQueues();
+	tasks = [];
     % todo: figure out how to allow multiple threads for videos, at that point,
     % the queue/afterEach/send procedure may be useful
     % afterEach(q_c, @(x) update_pipe_progress(x, paths, 'cal', gui));
@@ -94,17 +95,20 @@ end
 
 %% LIVE LOOP
 while isvalid(gui.fig) && gui.run_live && ~live_data.done
-    %% Calibration Loop
-    [live_data, pff_cal] = calibrate_LIVE(...
-        live_data, paths, pff_cal, cpool, gui);
+    %% Assign tasks
+	tasks = getTasks(tasks, live_data, paths, sys_opts);
+	
+	%% Calibration Loop
+    [live_data, tasks] = calibrate_LIVE(...
+        live_data, paths, tasks, cpool, gui);
     
     %% Registration/Averaging
-    [live_data, pff_vid] = ra_LIVE(...
-        live_data, paths, sys_opts, pff_vid, cpool, gui);
+    [live_data, tasks] = ra_LIVE(...
+        live_data, paths, sys_opts, tasks, cpool, gui);
     
     %% Montaging
-    [live_data, pff_mon, paths] = montage_LIVE(...
-        live_data, paths, sys_opts, pff_mon, cpool, gui);
+    [live_data, tasks, paths] = montage_LIVE(...
+        live_data, paths, sys_opts, tasks, cpool, gui);
     
     %% Update live database
     live_data = updateLIVE(paths, live_data, sys_opts, gui, mon_app);

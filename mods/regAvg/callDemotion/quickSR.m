@@ -1,11 +1,9 @@
-function [fids, success] = quickSR(vid, vid_num, fids, this_dsin, paths, ...
-    prime_fname, sec_fnames)
+function [fids, success] = quickSR(vid, vid_num, fids, this_dsin, paths, prime_fname, sec_fnames)
 %quickSR quick Strip-registration
 
 %% Definitions
 success_crit    = 3/4 * size(vid,1);
 short_circuit   = 1/3 * size(vid,1);
-last_height     = 0;
 
 %% Create video readers for secondaries
 vr_sec = cell(size(sec_fnames));
@@ -35,22 +33,6 @@ for ii=1:numel(fids)
         fn_write_AVI(fullfile(tmp_path, prime_fname), ...
             gather(uint8(vid(:,:, these_frames))));
         
-        % Read specific frames of secondaries that are required
-        for mm=1:numel(sec_fnames)
-            vw = VideoWriter(fullfile(tmp_path, sec_fnames{mm}), ...
-                'grayscale avi'); %#ok<TNMLP>
-            open(vw);
-            for nn=1:n_frames
-                % Read, desinusoid, & write without storing data to be as 
-                % fast as possible
-                writeVideo(vw, ...
-                    uint8(single(...
-                    read(vr_sec{mm}, these_frames(nn))) * ...
-                    this_dsin.mat'));
-            end
-            close(vw);
-        end
-        
         %% Create batch
         % Construct secondary filename string
         sec_fname_str = strjoin(sec_fnames, ', ');
@@ -65,8 +47,7 @@ for ii=1:numel(fids)
             [~, dmb_fname, status, stdout] = deploy_createDmb(...
                 'C:\Python27\python.exe', ...
                 fullfile(tmp_path, prime_fname), ...
-                'lps', lps, 'lbss', lbss, 'ncc_thr', ncc_thr, ...
-                'secondVidFnames', sec_fname_str, ...
+                'lps', lps, 'lbss', lbss, 'ncc_thr', ncc_thr, ...%'secondVidFnames', sec_fname_str, ...
                 'ref_frame', ref_frame, ...
                 'ffrMinFrames', 3, ...
                 'srMinFrames', 3, ...
@@ -119,6 +100,37 @@ for ii=1:numel(fids)
         
         %% After demotion, create split and average images
         if success
+			% Generate secondary modality images now that we know the registration is successful
+			dmp_fname = strrep(dmb_fname, '.dmb', '.dmp');
+			for mm=1:numel(sec_fnames)
+				writeSnippet(fullfile(tmp_path, sec_fnames{mm}), vr_sec{mm}, ...
+					these_frames, this_dsin.mat');
+				% Modify video name in dmp to apply strip reg to secondaries			
+				[status, stdout] = processSecondary(...
+					fullfile(tmp_path, dmp_fname), ...
+					fullfile(tmp_path, sec_fnames{mm}));
+				if ~status
+					error(stdout);
+				end
+			end
+			img_dir = dir(fullfile(img_path, '*.tif'));
+            img_fnames = {img_dir.name}';
+            % Read specific frames of secondaries that are required
+% 			for mm=1:numel(sec_fnames)
+% 				vw = VideoWriter(fullfile(tmp_path, sec_fnames{mm}), ...
+% 					'grayscale avi'); %#ok<TNMLP>
+% 				open(vw);
+% 				for nn=1:n_frames
+% 					% Read, desinusoid, & write without storing data to be as 
+% 					% fast as possible
+% 					writeVideo(vw, ...
+% 						uint8(single(...
+% 						read(vr_sec{mm}, these_frames(nn))) * ...
+% 						this_dsin.mat'));
+% 				end
+% 				close(vw);
+% 			end
+			
             if numel(find(contains(img_fnames, 'direct'))) == 1 && ...
                     numel(find(contains(img_fnames, 'reflect'))) == 1
                 % Prep file names
@@ -152,7 +164,10 @@ for ii=1:numel(fids)
         end
         fids(ii).cluster(jj).success = success;
         %% Delete temporary path
-        rmdir(fullfile(tmp_path, '..'), 's')
+        [status, msg] = rmdir(fullfile(tmp_path, '..'), 's');
+		if status
+			warning(msg)
+		end
     end
 end
 
@@ -163,3 +178,55 @@ end
 
 end
 
+function writeSnippet(ffname, vr, frame_idx, dsin_mat)
+
+vw = VideoWriter(ffname, 'grayscale avi');
+open(vw);
+try
+	for nn=1:numel(frame_idx)
+		% Read, desinusoid, & write without storing data to be as fast as possible
+		writeVideo(vw, uint8(single(read(vr, frame_idx(nn))) * dsin_mat));
+	end
+catch
+	close(vw);
+	return;
+end
+close(vw);
+
+end
+
+function [status, stdout] = processSecondary(dmp_ffname, vid_ffname)
+
+[~, vid_name, vid_ext] = fileparts(vid_ffname);
+
+%% Load .dmp and update primary sequence name
+fid = py.open(dmp_ffname, 'r');
+pick = py.pickle.load(fid);
+fid.close();
+% pick{'image_sequence_absolute_path'} = vid_path;
+pick{'image_sequence_file_name'} = [vid_name, vid_ext];
+fid = py.open(dmp_ffname, 'w');
+py.cPickle.dump(pick, fid);
+fid.close();
+
+%% Get path to reprocessing script
+% calling_fx_ffname = mfilename('fullpath');
+% path_parts = strsplit(calling_fx_ffname, filesep);
+% py_path = calling_fx_ffname(1:end-numel(path_parts{end}));
+py_path = 'D:\Code\AO\_dev\tmp\AO-PIPELINE\mods\regAvg\callDemotion\fb';
+py_ffname = fullfile(py_path, 'reprocessWithDMP.py');
+
+%% Process the .dmp
+[status, stdout] = system(sprintf('"%s" "%s" --dmpFFname "%s"', ...
+    'C:\Python27\python.exe', py_ffname, dmp_ffname));
+if status ~=0
+    error(stdout);
+else
+    % Get success status from stdout
+    out_lines = strsplit(stdout, '\n');
+    status = eval(lower(out_lines{2}));
+end
+
+
+
+end

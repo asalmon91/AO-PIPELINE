@@ -42,7 +42,7 @@ print 'Generating images'
 if output:
     success, error_msg, data = CreateRegisteredImages.RegisterPrimaryImageSequence(data, tool_bag, None)
 
-if output and success:
+if output and success and 'secondary_sequences_file_names' in data:
     n_secondary_sequences = len(data['secondary_sequences_file_names'])
 
     # only performing the movie registration if needed

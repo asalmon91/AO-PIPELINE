@@ -13,6 +13,7 @@ N_PAD = 4;
 VID_NUM_EXP = sprintf('%s%s%s', ...
     '[_]', repmat('\d', 1, N_PAD), '[.]mat');
 USE_REAL_DELAYS = true; % Change this to true if transferring between two local locations
+MAX_DELAY = 60;
 
 %% Get source and target directories
 % src = uigetdir('.', 'Select source root directory');
@@ -23,8 +24,8 @@ USE_REAL_DELAYS = true; % Change this to true if transferring between two local 
 % if isnumeric(trg)
 %     return;
 % end
-src = 'D:\workspace\JC_0605\src\2019_06_04_OD';
-trg = 'D:\workspace\JC_0605\AO_2_3_SLO\2019_06_04_OD';
+src = 'D:\workspace\JC_0605\src\JC_0605\AO_2_3_SLO\2019_06_04_OD';
+trg = 'D:\workspace\JC_0605\trg\JC_0605\AO_2_3_SLO\2019_06_04_OD';
 src_paths = initPaths(src);
 trg_paths = initPaths(trg);
 
@@ -111,9 +112,7 @@ for ii=1:numel(cal_avi_dir)
     fn_write_AVI(out_ffname, vid, FR, wb, WRITE_LAG)
     
     if ii < numel(cal_avi_dir)
-        if delays(ii) < 1
-            delays(ii) = 5;
-        end
+		delays(ii) = min([delays(ii), MAX_DELAY]);
         waitbar(1, wb, sprintf('%is delay.', round(delays(ii))));
         if USE_REAL_DELAYS
             pause(delays(ii));
@@ -250,6 +249,7 @@ for ii=1:numel(u_vid_nums)
     
     %% Simulate delay between "acquisitions"
     if ii < numel(u_vid_nums)
+		delays(ii) = min([delays(ii), MAX_DELAY]);
         waitbar(1, wb, sprintf('%is delay.', round(delays(ii))));
         if USE_REAL_DELAYS
             pause(delays(ii));
