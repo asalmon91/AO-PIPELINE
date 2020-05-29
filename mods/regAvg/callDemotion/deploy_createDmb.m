@@ -1,5 +1,5 @@
 function [vid_path, dmb_fname, status, stdout] = deploy_createDmb(...
-    py2_path, cal_path, cal_fname, vid_path, vid_fname, vid_size, varargin)
+    py2_path, vid_full_fname, varargin)
 %deploy_createDmb calls a python script which creates a .dmb file for use
 %with Demotion
 
@@ -22,31 +22,21 @@ is3D = @(x) isnumeric(x) && numel(x) == 3 && all(floor(x)==x) && all(x > 0);
 
 %% Required parameters
 req_params = {...
-    'py2_path',     isValidFile;
-    'cal_path',     isValidPath; 
-    'cal_fname',    @ischar;
-    'vid_path',     isValidPath;
-    'vid_fname',    @ischar;
-    'vid_size',     is3D};
+    'py2_path',         isValidFile;
+    'vid_full_fname',   isValidFile};
 % Add to parser
 for ii=1:size(req_params, 1)
     addRequired(ip, req_params{ii,1}, req_params{ii, 2});
 end
 
-%% Check if files exist
-if exist(fullfile(cal_path, cal_fname), 'file') == 0
-    error('%s not found', cal_fname);
-elseif exist(fullfile(vid_path, vid_fname), 'file') == 0
-    error('%s not found', vid_fname);
-end
-
 %% Parse required before adding optional
-parse(ip, py2_path, cal_path, cal_fname, vid_path, vid_fname, vid_size);
+parse(ip, py2_path, vid_full_fname);
 
 %% Get dimensions
-frame_ht = ip.Results.vid_size(1);
-frame_wd = ip.Results.vid_size(2);
-n_frames = ip.Results.vid_size(3);
+vr = VideoReader(ip.Results.vid_full_fname);
+frame_ht = vr.Height;
+frame_wd = vr.Width;
+n_frames = vr.NumFrames;
 
 %% Data-dependent validation fx's
 isValidNFrames = @(x) ...
@@ -56,6 +46,7 @@ isValidStripSize = @(x) ...
 
 %% Optional input parameters
 opt_params = {...
+    'cal_full_fname',   '',     isValidFile; 
     'ref_frame',        1,      isValidNFrames;
     'lps',              6,      isValidStripSize;
     'lbss',             6,      isValidStripSize;
@@ -66,7 +57,8 @@ opt_params = {...
     'srMinFrames',      1,      isValidNFrames;
     'secondVidFnames',  '',     @ischar;
     'ffrSaveSeq',       true,   isBoolean
-    'srSaveSeq',        true,   isBoolean};
+    'srSaveSeq',        true,   isBoolean;
+    'appendText',       '',     @ischar};
 
 % Add to parser
 for ii=1:size(opt_params, 1)
@@ -77,7 +69,7 @@ for ii=1:size(opt_params, 1)
 end
 
 %% Parse optional inputs
-parse(ip, py2_path, cal_path, cal_fname, vid_path, vid_fname, vid_size, varargin{:});
+parse(ip, py2_path, vid_full_fname, varargin{:});
 
 %% Unpack parser
 input_fields = fieldnames(ip.Results);
@@ -115,10 +107,26 @@ srMaxFrames = strjoin(...
     'uniformoutput', false), ...
     ', ');
 
+%% Split up full file names
+% Calibration
+dsin_req = true;
+if ~isempty(cal_full_fname)
+    [cal_path, cal_name, cal_ext] = fileparts(cal_full_fname);
+    cal_fname = [cal_name, cal_ext];
+else
+    dsin_req = false;
+    cal_path = '';
+    cal_fname = '';
+end
+% Primary video
+[vid_path, vid_name, vid_ext] = fileparts(vid_full_fname);
+vid_fname = [vid_name, vid_ext];
+
 %% Construct string for command line
 cmd_prompt = sprintf(horzcat(...
     ... % Formatting string for cmd line evaluation
     '"%s" "%s" ', ... % Python 2.7 path and Script full file name
+    '--dsinReq %i ', ... % Desinusoiding required
     '--calPath "%s" --calFname "%s" ', ... % Desinusoid info
     '--vidPath "%s" --vidFname "%s" ', ... % Primary video
     '--refFrame %i ', ... % Reference frame
@@ -127,10 +135,12 @@ cmd_prompt = sprintf(horzcat(...
     '--ffrMaxFrames "%s" --srMaxFrames "%s" ', ... % N frames to register
     '--ffrMinFrames %i --srMinFrames %i ', ... % Min overlap for cropping
     '--secondVidFnames "%s" ', ... % Secondary sequence file names
-    '--ffrSaveSeq %i --srSaveSeq %i'), ... % Output sequences
+    '--ffrSaveSeq %i --srSaveSeq %i ', ... % Output sequences
+    '--append %s '), ... % Custom label
     ... % Input
     py2_path, ... % Python 2.7 path
     fullfile(py_path, dmb_py_fname), ... % Script full file name
+    dsin_req, ... % Desinusoid required
     cal_path, cal_fname, ... % Desinusoid info
     vid_path, vid_fname, ... % Primary video
     ref_frame, ... % Reference frame
@@ -139,7 +149,8 @@ cmd_prompt = sprintf(horzcat(...
     ffrMaxFrames, srMaxFrames, ... % N frames to register
     ffrMinFrames, srMinFrames, ... % Min overlap for cropping
     secondVidFnames, ... % Secondary sequence file names
-    ffrSaveSeq, srSaveSeq); % Output sequences
+    ffrSaveSeq, srSaveSeq, ... % Output sequences
+    appendText); % Custom label
 
 %% Send to OS
 [status, stdout] = system(cmd_prompt);
@@ -154,8 +165,6 @@ end
 
 % todo: these parameters have yet to be implemented
 % argList = [
-%     # Major parameters
-%     "dsinReq=", 
 %     # Strip reg
 %     "stripRegReq=", "srPrecision=", "srCropNccRows=", "srCropNccCols=", "srDisp=", "dct=",
 %     # Full frame reg

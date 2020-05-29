@@ -4,7 +4,7 @@ function [status, stdout] = deployUCL_AM(...
 
 % todo: read from .ini
 py_fname        = 'call_auto_montage.py';
-py_file_info    = subdir(py_fname);
+py_file_info    = dir(fullfile(mfilename('fullpath'), '..', py_fname));
 py_path         = py_file_info.folder;
 
 % Deconstruct position full file name into path and file name

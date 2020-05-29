@@ -9,7 +9,11 @@ end
 
 %% Create video reader object
 vr      = VideoReader(ffname);
-nFrames = round(vr.FrameRate*vr.Duration);
+if isfield(vr, 'NumFrames')
+    nFrames = vr.NumFrames;
+else
+    nFrames = floor(vr.Duration * vr.FrameRate);
+end
 
 %% Read video
 if ~isempty(strfind(vr.VideoFormat, 'RGB24'))

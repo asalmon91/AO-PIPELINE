@@ -1,2 +1,4 @@
 *.idea
 *.asv
+tests\
+_archive\

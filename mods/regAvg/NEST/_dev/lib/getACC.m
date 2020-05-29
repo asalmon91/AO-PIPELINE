@@ -9,7 +9,7 @@ threshold = 1e-6;
 [nRows, nCols] = size(img);
 
 % pad both images
-pad1 = zeros(2*nRows-1, 2*nCols-1);
+pad1 = zeros(2*nRows-1, 2*nCols-1, class(img));
 pad2 = pad1;
 
 pad1(1:nRows, 1:nCols)     = img;
@@ -19,7 +19,7 @@ pad2(nRows:end, nCols:end) = img;
 crossCorr = real(ifft2(conj(fft2(pad1)).*fft2(pad2)));
 
 % normalization
-pupilImg1 = zeros(size(pad1));
+pupilImg1 = zeros(size(pad1), class(img));
 pupilImg2 = pupilImg1;
 
 pupilImg1(1:nRows, 1:nCols)     = 1;

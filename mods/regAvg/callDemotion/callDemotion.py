@@ -6,10 +6,10 @@ import MotionEstimation, CreateRegisteredImages, CreateRegisteredSequences
 import CUDABatchProcessorToolBag
 import cPickle
 
-argList = ["dmbPath=", "dmbFname="]
+argList = ["dmbPath=", "dmbFname=", "output="]
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], 'p:n:', argList)
+    opts, args = getopt.getopt(sys.argv[1:], 'p:n:o:', argList)
     #print opts
     #print args
 except getopt.GetoptError:
@@ -22,6 +22,11 @@ for opt, arg in opts:
         dmb_path = arg
     elif opt in ('-n', "--dmbFname"):
         dmb_fname = arg
+    elif opt in ('-o', "--output"):
+        if arg == '0':
+            output = False
+        else:
+            output = True
 
 
 # Test constants
@@ -34,9 +39,10 @@ tool_bag = CUDABatchProcessorToolBag.CUDABatchProcessorToolBag()
 print 'registering ' + dmb_fname
 success, error_msg, data = MotionEstimation.EstimateMotion(dmb_ffname, tool_bag)
 print 'Generating images'
-success, error_msg, data = CreateRegisteredImages.RegisterPrimaryImageSequence(data, tool_bag, None)
+if output:
+    success, error_msg, data = CreateRegisteredImages.RegisterPrimaryImageSequence(data, tool_bag, None)
 
-if success:
+if output and success:
     n_secondary_sequences = len(data['secondary_sequences_file_names'])
 
     # only performing the movie registration if needed
@@ -123,9 +129,11 @@ else:
 
 if success:
     # getting rid of the desinusoid matrix in the interest of hard-drive space!
+    # Modified:AES:20200229:Keep desinusoid matrix for fast re-processing
+    '''
     if data.has_key('desinusoid_matrix'):
         not_used = data.pop('desinusoid_matrix')
-
+    '''
     # saving data to a file with "Demotion processed" extension (dmp)
     f = open(dmb_ffname[:len(dmb_ffname) - 1] + 'p', 'w')
     cPickle.dump(data, f)

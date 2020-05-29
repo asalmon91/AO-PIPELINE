@@ -9,7 +9,9 @@ if exist(out_path, 'dir') == 0 % Try lowercase
     if any(search_contents)
         out_path = fullfile(root_dir, contents{search_contents});
     else
-        warning('Could not find subdirectory in %s', root_dir);
+        out_path = uigetdir(root_dir, sprintf(...
+            'Failed to automatically find %s, please select', ...
+            subdir_name));
     end
 end
  

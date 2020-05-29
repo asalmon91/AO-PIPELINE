@@ -2,7 +2,7 @@ function [cluster_sort, s_cluster_sz] = sortClusterBySize(data,link_id)
 %sortClusterBySize returns the cluster ids sorted by number of frames with
 %that id
 
-clusters = [data([data.link_id] == link_id).cluster];
+clusters = [data([data.link_id] == link_id & ~[data.rej]).cluster];
 [u_clusters,~,ic] = unique(clusters);
 if numel(u_clusters) == 1
     cluster_sort = u_clusters;

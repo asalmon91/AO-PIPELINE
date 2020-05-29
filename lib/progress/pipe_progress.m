@@ -22,7 +22,7 @@ function varargout = pipe_progress(varargin)
 
 % Edit the above text to modify the response to help pipe_progress
 
-% Last Modified by GUIDE v2.5 14-Jun-2019 10:30:10
+% Last Modified by GUIDE v2.5 14-Feb-2020 11:51:43
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -53,6 +53,7 @@ function pipe_progress_OpeningFcn(hObject, eventdata, handles, varargin)
 % varargin   command line arguments to pipe_progress (see VARARGIN)
 
 % Choose default command line output for pipe_progress
+hObject.Color = [.25, .25, .25];
 handles.output = hObject;
 
 % Update handles structure
@@ -72,3 +73,18 @@ function varargout = pipe_progress_OutputFcn(hObject, eventdata, handles)
 % Get default command line output from handles structure
 varargout{1} = handles.output;
 varargout{2} = handles;
+
+
+% --- Executes during object creation, after setting all properties.
+function dsin_uit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to dsin_uit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+hObject.BackgroundColor = hObject.Parent.Color;
+hObject.ForegroundColor = [1,1,1];
+
+% --- Executes on button press in done_btn.
+function done_btn_Callback(hObject, eventdata, handles)
+% hObject    handle to done_btn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)

@@ -1,4 +1,4 @@
-function out_path = prepMiniMontage(in_path, vid_nums)
+function out_path = prepMiniMontage(in_path, img_fnames)
 %prepMiniMontage copies images into a separate directory to test in
 %preparation for checking whether they connect
 
@@ -9,11 +9,8 @@ if exist(out_path, 'dir') == 0
 end
 
 % Copy images into that directory
-for ii=1:numel(vid_nums)
-    tif_search = dir(fullfile(in_path, sprintf('*_%s_*', vid_nums{ii})));
-    for jj=1:numel(tif_search)
-        copyfile(fullfile(in_path, tif_search(jj).name), out_path);
-    end
+for ii=1:numel(img_fnames)
+    copyfile(fullfile(in_path, img_fnames{ii}), out_path);
 end
 
 

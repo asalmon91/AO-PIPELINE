@@ -1,6 +1,9 @@
-function pccThr = getPccThr(pcc_thr_ffname, mods)
+function pccThr = getPccThr(pcc_thr_ffname, mod_order)
 %getPccThr Reads the results of ARFS PCC threshold training and matches the
 %thresholds to the modalities
+
+%% Default
+DEF_PCC_THR = 0.01;
 
 %% Read contents
 txt_contents = tdfread(pcc_thr_ffname);
@@ -8,17 +11,16 @@ mod_list = cellstr(txt_contents.mod);
 thr_list = txt_contents.thr;
 
 %% Match PCC thresholds to their modality
-pccThr = zeros(size(thr_list));
-for ii=1:numel(mods)
-    pccThr(ii) = thr_list(contains(mod_list, mods{ii}));
+pccThr = zeros(size(mod_order));
+for ii=1:numel(mod_order)
+    mod_idx = contains(mod_list, mod_order{ii});
+    if ~any(mod_idx)
+        pccThr(ii) = DEF_PCC_THR;
+        warning('ARFS not trained on %s, default to threshold: %0.3f', ...
+            mod_order{ii}, DEF_PCC_THR)
+    else
+        pccThr(ii) = thr_list(mod_idx);
+    end
 end
 
 end
-
-%% Archive
-% This block was used when the pcc thresholds were stored in a .xlsx
-% [~,~,raw] = xlsread(pcc_thr_ffname);
-% mod_col = contains(raw(1,:), 'mod');
-% thr_col = contains(raw(1,:), 'thr');
-% mod_list = raw(2:end, mod_col);
-% thr_list = raw(2:end, thr_col);

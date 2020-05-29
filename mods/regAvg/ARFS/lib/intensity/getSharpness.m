@@ -6,12 +6,16 @@ function data = getSharpness(imgs, data, sdx)
 
 % waitbar(0, wb, 'Calculating sharpness...');
 sharps = zeros(numel(data), 1);
+if isa(imgs, 'gpuArray')
+    sharps = gpuArray(sharps);
+end
 for ii=1:numel(data)
     if ~data(ii).rej
         sharps(ii) = mean(mean(sobelFilter(imgs(:,:,ii))));
     end
-    
-%     waitbar(ii/numel(data), wb);
+end
+if isa(sharps, 'gpuArray')
+    sharps = gather(sharps);
 end
 
 % Find outliers

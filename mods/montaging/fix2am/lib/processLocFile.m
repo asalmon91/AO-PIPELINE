@@ -1,8 +1,14 @@
 function loc_data = processLocFile(loc_path, loc_fname)
 %processLocFile universal reading and processing
 
+%% Default
+loc_data = [];
+
 %% Read file
-[~,~,raw] = xlsread(fullfile(loc_path, loc_fname));
+raw = readFixGuiFile(fullfile(loc_path, loc_fname));
+if isempty(raw)
+    return;
+end
 loc_head = raw(1, :);
 loc_body = raw(2:end, :);
 clear raw;
