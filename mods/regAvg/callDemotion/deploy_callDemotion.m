@@ -9,9 +9,10 @@ if ~exist('outputImages', 'var') || isempty(outputImages)
 end
 
 %% Send .dmb to DeMotion
-calling_fx_ffname = mfilename('fullpath');
-path_parts = strsplit(calling_fx_ffname, filesep);
-py_path = calling_fx_ffname(1:end-numel(path_parts{end}));
+% calling_fx_ffname = mfilename('fullpath');
+% path_parts = strsplit(calling_fx_ffname, filesep);
+% py_path = calling_fx_ffname(1:end-numel(path_parts{end}));
+py_path = 'D:\Code\AO\_dev\tmp\AO-PIPELINE\mods\regAvg\callDemotion';
 dmp_py_fname = 'callDemotion.py';
 
 % Build string to send to cmd line

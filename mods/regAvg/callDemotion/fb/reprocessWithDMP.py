@@ -33,7 +33,7 @@ tool_bag = CUDABatchProcessorToolBag.CUDABatchProcessorToolBag()
 print 'Generating images'
 #data['frame_strip_ncc_threshold'] = 0.7
 success, error_msg, data = CreateRegisteredImages.RegisterPrimaryImageSequence(data, tool_bag, None)
-if success:
+if success and 'secondary_sequences_file_names' in data:
     n_secondary_sequences = len(data['secondary_sequences_file_names'])
 
     # only performing the movie registration if needed

@@ -40,7 +40,7 @@ if numel(montages) > 1
                     src_idx = src_idx(1); % There could be multiple shared
                     src_pos = cell2mat(montages(ii).txfms{src_idx}(2:3));
 
-                    trg_idx = strcmp(trg_fnames, shared_fname);
+                    trg_idx = find(strcmp(trg_fnames, shared_fname));
                     trg_idx_1 = trg_idx(1); % There could be multiple shared
                     trg_pos = cell2mat(montages(jj).txfms{trg_idx_1}(2:3));
 

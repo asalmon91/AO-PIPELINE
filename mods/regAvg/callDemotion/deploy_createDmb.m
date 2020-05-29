@@ -4,9 +4,13 @@ function [vid_path, dmb_fname, status, stdout] = deploy_createDmb(...
 %with Demotion
 
 %% DeMotion python scripts
-calling_fx_ffname = mfilename('fullpath');
-path_parts = strsplit(calling_fx_ffname, filesep);
-py_path = calling_fx_ffname(1:end-numel(path_parts{end}));
+% this doesn't work when it's called by parfeval
+% calling_fx_ffname = mfilename('fullpath');
+% path_parts = strsplit(calling_fx_ffname, filesep);
+% py_path = calling_fx_ffname(1:end-numel(path_parts{end}));
+
+% todo: find a generalizable solution to this problem
+py_path = 'D:\Code\AO\_dev\tmp\AO-PIPELINE\mods\regAvg\callDemotion';
 dmb_py_fname = 'createDmb.py';
 
 %% Create input parser object
@@ -156,6 +160,8 @@ cmd_prompt = sprintf(horzcat(...
 [status, stdout] = system(cmd_prompt);
 if ~status
     dmb_fname = strtrim(stdout);
+else
+	dmb_fname = [];
 end
 
 % Predict filename

@@ -1,6 +1,14 @@
-function img_fnames = getNextMontage(ld, paths, prime_mod)
+function img_fnames = getNextMontage(ld, paths, mod_order)
 %getNextMontage determines un-montaged images and includes at least one image
 %that has been previously montaged if available
+
+%% Default
+img_fnames = [];
+
+% Check that video database exists
+if ~isfield(ld, 'vid') || isempty(ld.vid) || ~isfield(ld.vid, 'vid_set') || isempty(ld.vid.vid_set)
+	return;
+end
 
 %% Constants
 SEARCH_DIST = 2; % it will try to montage any new images with images that are expected to be this far away (degrees)
@@ -10,33 +18,46 @@ SEARCH_DIST = 2; % it will try to montage any new images with images that are ex
 % automontager only logs confocal. This could be a problem
 % if confocal is not collected or different confocal
 % wavelengths exist
-% img_fnames = dir(fullfile(paths.out, sprintf('*_%s_*.tif', prime_mod)));
-% img_fnames = {img_fnames.name}';
-% if numel(img_fnames) < 2
-%     return;
-% end
-img_fnames = [];
-for ii=1:numel(ld.vid.vid_set)
-    if ~ld.vid.vid_set(ii).processed
-        continue;
-    end
-    for jj=1:numel(ld.vid.vid_set(ii).vids)
-        for kk=1:numel(ld.vid.vid_set(ii).vids(jj).fids)
-            for mm=1:numel(ld.vid.vid_set(ii).vids(jj).fids(kk).cluster)
-                if ~ld.vid.vid_set(ii).vids(jj).fids(kk).cluster(mm).success
-                    continue;
-                end
-                out_fnames = ld.vid.vid_set(ii).vids(jj).fids(kk).cluster(mm).out_fnames;
-                % todo: find a more robust way to handle this. The UCL
-                % automontager only logs confocal. This could be a problem
-                % if confocal is not collected or different confocal
-                % wavelengths exist
-                out_fnames(~contains(out_fnames, sprintf('_%s_', prime_mod))) = [];
-                img_fnames = [img_fnames; out_fnames]; %#ok<AGROW>
-            end
-        end
-    end
+prime_mod = mod_order{1};
+sec_mods = mod_order;
+sec_mods(1) = [];
+img_fnames = dir(fullfile(paths.out, sprintf('*_%s_*.tif', prime_mod)));
+img_fnames = {img_fnames.name}';
+
+% Filter out images that don't have a complete set
+remove = false(size(img_fnames));
+for ii=1:numel(img_fnames)
+	sec_img_ffnames = fullfile(paths.out, strrep(img_fnames{ii}, prime_mod, sec_mods'));
+	for jj=1:numel(sec_img_ffnames)
+		remove(ii) = exist(sec_img_ffnames{jj}, 'file') == 0;
+		if remove(ii)
+			break;
+		end
+	end
 end
+img_fnames(remove) = [];
+
+% for ii=1:numel(ld.vid.vid_set)
+%     if ~ld.vid.vid_set(ii).processed
+%         continue;
+%     end
+%     for jj=1:numel(ld.vid.vid_set(ii).vids)
+%         for kk=1:numel(ld.vid.vid_set(ii).vids(jj).fids)
+%             for mm=1:numel(ld.vid.vid_set(ii).vids(jj).fids(kk).cluster)
+%                 if ~ld.vid.vid_set(ii).vids(jj).fids(kk).cluster(mm).success
+%                     continue;
+%                 end
+%                 out_fnames = ld.vid.vid_set(ii).vids(jj).fids(kk).cluster(mm).out_fnames;
+%                 % todo: find a more robust way to handle this. The UCL
+%                 % automontager only logs confocal. This could be a problem
+%                 % if confocal is not collected or different confocal
+%                 % wavelengths exist
+%                 out_fnames(~contains(out_fnames, sprintf('_%s_', prime_mod))) = [];
+%                 img_fnames = [img_fnames; out_fnames]; %#ok<AGROW>
+%             end
+%         end
+%     end
+% end
 if numel(img_fnames) < 2
     return;
 end

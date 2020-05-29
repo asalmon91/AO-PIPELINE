@@ -26,9 +26,10 @@ py.cPickle.dump(pick, fid);
 fid.close();
 
 %% Get path to reprocessing script
-calling_fx_ffname = mfilename('fullpath');
-path_parts = strsplit(calling_fx_ffname, filesep);
-py_path = calling_fx_ffname(1:end-numel(path_parts{end}));
+% calling_fx_ffname = mfilename('fullpath');
+% path_parts = strsplit(calling_fx_ffname, filesep);
+% py_path = calling_fx_ffname(1:end-numel(path_parts{end}));
+py_path = 
 py_ffname = fullfile(py_path, 'reprocessWithDMP.py');
 
 %% Process the .dmp

@@ -14,15 +14,17 @@ pipe_data = updateVidDB(pipe_data, paths, opts);
 vid_objs = pipe_data.vid.vid_set;
 dsin_objs = pipe_data.cal.dsin;
 % ii=1;
-for ii=1:numel(vid_objs)
+parfor ii=1:numel(vid_objs)
     % Skip if already run
     if ~vid_objs(ii).hasAnySuccess
         vid_objs(ii) = process_vidset(vid_objs(ii), dsin_objs, paths, opts, q);
-        pipe_data.vid.vid_set(ii) = vid_objs(ii);
-        save_full_pipe(pipe_data, opts, paths);
+%         pipe_data.vid.vid_set(ii) = vid_objs(ii);
+%         save_full_pipe(pipe_data, opts, paths);
     end
     send(q, vid_objs(ii));
 end
+pipe_data.vid.vid_set = vid_objs;
+save_full_pipe(pipe_data, opts, paths);
 pipe_data = updateVidDB(pipe_data, paths, opts);
 update_pipe_progress(pipe_data, paths, 'vid', gui);
 
