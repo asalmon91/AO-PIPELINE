@@ -15,7 +15,8 @@ function live_data = ao_pipe(varargin)
 % fprintf('Initializing...\n');
 addpath(genpath('classes'), genpath('mods'), genpath('lib'));
 
-%% Installation
+%% Gathering 3rd party functions
+paths_3p = get3rdPartyPaths(mfilename('fullpath'));
 % ini = checkFirstRun();
 
 %% Inputs & system settings
@@ -180,16 +181,14 @@ for ii=1:numel(gui.root_path_list)
     % todo: this might break in batch mode
     % Output modalities must be overwritten
     opts.mod_order = gui.mod_order_uit.Data(:,1)';
-    if isempty(opts)
-        opts.lambda_order   = cell2mat(cellfun(@str2double, ...
+	opts.lambda_order   = cell2mat(cellfun(@str2double, ...
             gui.mod_order_uit.Data(:,2)', 'uniformoutput', false));
-        opts.n_frames = gui.n_frames_full_txt.Value;
-        opts.lpmm = gui.grid_freq.Value/25.4;
-        opts.me_f_mm = gui.grid_focal.Value;
-        if ~isfield(opts, 'subject') || isempty(opts.subject)
-            opts.subject = gui.subject;
-        end
-    end
+	opts.n_frames = gui.n_frames_full_txt.Value;
+	opts.lpmm = gui.grid_freq.Value/25.4;
+	opts.me_f_mm = gui.grid_focal.Value;
+	if ~isfield(opts, 'subject') || isempty(opts.subject)
+		opts.subject = gui.subject;
+	end
     
     % Get arfs parameters
     search = subdir('pcc_thresholds.txt');

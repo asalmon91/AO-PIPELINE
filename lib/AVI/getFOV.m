@@ -32,8 +32,19 @@ for ii=1:numel(header_ffnames)
         end
     else % todo: DRY violation, fix
         name_parts  = strsplit(names{ii}, '_');
-        fov_token   = name_parts{find(strcmpi(name_parts, 'deg'))-1};
-        fov(ii)     = str2double(strrep(fov_token, 'p', '.'));
+		if any(strcmpi(name_parts, 'deg')) % See if they helped out by adding a deg token
+			fov_token = name_parts{find(strcmpi(name_parts, 'deg'))-1};
+		else % More often, this is skipped and they just have something like _1p00_
+			try
+				fov_token = name_parts{~cell2mat(...
+					cellfun(@isempty, regexp(name_parts, '\d+p\d+'), 'uniformoutput', false)...
+					)};
+			catch
+				warning('Failed to determine FOV for %s', names{ii});
+				fov(ii) = 0;
+			end
+		end
+		fov(ii) = str2double(strrep(fov_token, 'p', '.'));
     end
 end
 

@@ -52,8 +52,15 @@ end
 
 %% Get FOV, wavelength, & orientation
 fovs = getFOV(fullfile(paths.cal, mat_fnames));
-wavelengths = getWavelength(mat_fnames);
 orientations = getOrientation(mat_fnames);
+wavelengths = getWavelength(mat_fnames);
+
+% If wavelength not entered, check if there's only one wavelength in options
+if all(isnan(wavelengths))
+	if numel(unique(opts.lambda_order)) == 1
+		wavelengths(:) = opts.lambda_order(1);
+	end
+end
 
 %% Check for redundancy
 remove = remove_redundant_cal_files(orientations, fovs, wavelengths, ...
