@@ -34,10 +34,15 @@ guess(4).name = 'callDemotion';
 search_results = subdir(fullfile(root_path, 'mods', '*callDemotion.py'));
 guess(4).path = {search_results(1).name};
 
-% UCL Automontager
-guess(5).name = 'UCL_AM';
-search_results = subdir(fullfile(root_path, 'mods', '*call_auto_montage.py'));
+% Re-process from .dmp python script
+guess(5).name = 'reprocessWithDMP';
+search_results = subdir(fullfile(root_path, 'mods', '*reprocessWithDMP.py'));
 guess(5).path = {search_results(1).name};
+
+% UCL Automontager
+guess(6).name = 'UCL_AM';
+search_results = subdir(fullfile(root_path, 'mods', '*call_auto_montage.py'));
+guess(6).path = {search_results(1).name};
 
 
 % Find programs

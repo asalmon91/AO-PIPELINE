@@ -46,7 +46,8 @@ if gui.run_live
         if exist(paths.out, 'dir') == 0
             mkdir(paths.out)
         end
-    end
+	end
+	paths.third_party = paths_3p;
 
     %% Update all progress
     % in case it was interrupted
@@ -159,7 +160,10 @@ for ii=1:numel(gui.root_path_list)
         [date_str, eye_str] = getDateAndEye(paths.root);
         pipe_data.date = date_str;
         pipe_data.eye = eye_str;
-    end
+	end
+	if ~isfield(paths, 'third_party') || isempty(paths.third_party)
+		paths.third_party = paths_3p;
+	end
     
     %% Setup output
     % R/A output

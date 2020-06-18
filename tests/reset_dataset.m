@@ -29,12 +29,15 @@ end
 
 %% Delete processed images
 proc_path = fullfile(root_path, 'Processed', 'FULL');
-fprintf('Deleting %s\n', proc_path);
-rmdir(proc_path, 's');
+if exist(proc_path, 'dir') ~= 0
+	fprintf('Deleting %s\n', proc_path);
+	rmdir(proc_path, 's');
+end
 
 %% Delete Montages
 mon_path = fullfile(root_path, 'Montages', 'FULL');
-fprintf('Deleting %s\n', mon_path);
-rmdir(mon_path, 's');
-
+if exist(mon_path, 'dir') ~= 0
+	fprintf('Deleting %s\n', mon_path);
+	rmdir(mon_path, 's');
+end
 

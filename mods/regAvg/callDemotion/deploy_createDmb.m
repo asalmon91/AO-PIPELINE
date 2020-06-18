@@ -1,5 +1,5 @@
 function [vid_path, dmb_fname, status, stdout] = deploy_createDmb(...
-    py2_path, vid_full_fname, varargin)
+    paths, vid_full_fname, varargin)
 %deploy_createDmb calls a python script which creates a .dmb file for use
 %with Demotion
 
@@ -10,8 +10,8 @@ function [vid_path, dmb_fname, status, stdout] = deploy_createDmb(...
 % py_path = calling_fx_ffname(1:end-numel(path_parts{end}));
 
 % todo: find a generalizable solution to this problem
-py_path = 'D:\Code\AO\_dev\tmp\AO-PIPELINE\mods\regAvg\callDemotion';
-dmb_py_fname = 'createDmb.py';
+% py_path = 'D:\Code\AO\_dev\tmp\AO-PIPELINE\mods\regAvg\callDemotion';
+% dmb_py_fname = 'createDmb.py';
 
 %% Create input parser object
 ip = inputParser;
@@ -26,7 +26,7 @@ is3D = @(x) isnumeric(x) && numel(x) == 3 && all(floor(x)==x) && all(x > 0);
 
 %% Required parameters
 req_params = {...
-    'py2_path',         isValidFile;
+    'paths',			@isstruct;
     'vid_full_fname',   isValidFile};
 % Add to parser
 for ii=1:size(req_params, 1)
@@ -34,7 +34,7 @@ for ii=1:size(req_params, 1)
 end
 
 %% Parse required before adding optional
-parse(ip, py2_path, vid_full_fname);
+parse(ip, paths, vid_full_fname);
 
 %% Get dimensions
 vr = VideoReader(ip.Results.vid_full_fname);
@@ -73,7 +73,7 @@ for ii=1:size(opt_params, 1)
 end
 
 %% Parse optional inputs
-parse(ip, py2_path, vid_full_fname, varargin{:});
+parse(ip, paths, vid_full_fname, varargin{:});
 
 %% Unpack parser
 input_fields = fieldnames(ip.Results);
@@ -142,8 +142,8 @@ cmd_prompt = sprintf(horzcat(...
     '--ffrSaveSeq %i --srSaveSeq %i ', ... % Output sequences
     '--append %s '), ... % Custom label
     ... % Input
-    py2_path, ... % Python 2.7 path
-    fullfile(py_path, dmb_py_fname), ... % Script full file name
+    getIniPath(paths.third_party, 'Python 2.7'), ... % Python 2.7 path
+    getIniPath(paths.third_party, 'createDmb'), ... % Script full file name
     dsin_req, ... % Desinusoid required
     cal_path, cal_fname, ... % Desinusoid info
     vid_path, vid_fname, ... % Primary video

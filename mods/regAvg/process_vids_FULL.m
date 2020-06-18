@@ -14,7 +14,7 @@ pipe_data = updateVidDB(pipe_data, paths, opts);
 vid_objs = pipe_data.vid.vid_set;
 dsin_objs = pipe_data.cal.dsin;
 % ii=1;
-parfor ii=1:numel(vid_objs)
+for ii=1:numel(vid_objs)
     % Skip if already run
     if ~vid_objs(ii).hasAnySuccess
         vid_objs(ii) = process_vidset(vid_objs(ii), dsin_objs, paths, opts, q);

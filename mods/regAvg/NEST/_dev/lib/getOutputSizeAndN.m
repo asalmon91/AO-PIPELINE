@@ -81,8 +81,6 @@ if exist('current_modality', 'var') ~=0 && ~isempty(current_modality)
     bin_sr_vid = fn_read_AVI(fullfile(sr_avi_path, [bin_name, '.avi']));
     bin_map = sum(bin_sr_vid, 3)./255;
     if numel(find(bin_map(:)==0)) > 0
-        % A little bit of crop error at the corners never hurt anyone,
-        % right?
         cropErr = true;
         return;
     end

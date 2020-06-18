@@ -1,4 +1,4 @@
-function [status, stdout] = deploy_reprocess(dmp_ffname, ncc_thr)
+function [status, stdout] = deploy_reprocess(dmp_ffname, ncc_thr, paths)
 %deploy_reprocess Calls the DubraLab modules: CreateRegisteredImages & 
 % CreateRegisteredSequences to obtain strip-registered images and
 % sequences after adjusting the ncc threshold
@@ -29,12 +29,14 @@ fid.close();
 % calling_fx_ffname = mfilename('fullpath');
 % path_parts = strsplit(calling_fx_ffname, filesep);
 % py_path = calling_fx_ffname(1:end-numel(path_parts{end}));
-py_path = 
-py_ffname = fullfile(py_path, 'reprocessWithDMP.py');
+% py_path = 
+% py_ffname = fullfile(py_path, 'reprocessWithDMP.py');
 
 %% Process the .dmp
 [status, stdout] = system(sprintf('"%s" "%s" --dmpFFname "%s"', ...
-    'C:\Python27\python.exe', py_ffname, dmp_ffname));
+    getIniPath(paths.third_party, 'Python 2.7'), ...
+	getIniPath(paths.third_party, 'reprocessWithDMP'), ...
+	dmp_ffname));
 if status ~=0
     error(stdout);
 else

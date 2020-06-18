@@ -77,7 +77,13 @@ for ii=1:numel(opts.mod_order)
     end
     
     %% Desinusoid
-    vid = desinusoidVideo(vid, dsin.mat);
+	try
+		vid = desinusoidVideo(vid, dsin.mat);
+	catch me
+		if strcmp(me.identifier, 'parallel:gpu:array:OOM')
+            vid = desinusoidVideo(gather(vid), dsin.mat);
+		end
+	end
     if vid_set.profiling
         vid_set.t_proc_dsind = clock;
     end
@@ -90,19 +96,27 @@ for ii=1:numel(opts.mod_order)
     end
     
     %% ARFS
-    frames = arfs(vid, 'pcc_thr', opts.pcc_thrs(ii), 'mfpc', 10);
+	frames = arfs(gather(vid), 'pcc_thr', opts.pcc_thrs(ii), 'mfpc', 10);
+% 	try
+% 		frames = arfs(vid, 'pcc_thr', opts.pcc_thrs(ii), 'mfpc', 10);
+% 	catch me
+% 		if strcmp(me.identifier, 'parallel:gpu:array:OOM')
+%             frames = arfs(gather(vid), 'pcc_thr', opts.pcc_thrs(ii), 'mfpc', 10);
+% 		end
+% 	end
     vid_set.vids(ii).frames = frames;
     fids = get_best_n_frames_per_cluster(frames, 1);
 %     n_frames = get_n_not_rejected(frames, ...
 %         {'rejectSmallGroups'; 'rejectSmallClusters'; 'firstFrame'});
-    n_frames = get_n_not_rejected(frames, {'firstFrame'});
-    if n_frames < opts.n_frames
-        n_frames = opts.n_frames;
-    end
-    if n_frames > 50
-        n_frames = 50;
-    end
+%     n_frames = get_n_not_rejected(frames, {'firstFrame'});
+%     if n_frames < opts.n_frames
+%         n_frames = opts.n_frames;
+%     end
+%     if n_frames > 50
+%         n_frames = 50;
+%     end
     % Include frames rejected by motion tracking (not the most robust)
+	
     if vid_set.profiling
         vid_set.t_proc_arfs = clock;
     end
@@ -146,6 +160,14 @@ for ii=1:numel(opts.mod_order)
             fids(jj).cluster(kk).ncc_thr    = NCC_THR_0;
 %             fids(jj).cluster(kk).lps_thr_lut = candidate_ncc_thr_lut;
             
+			% Get number of frames to register and average
+			n_frames = get_n_frames(frames, fids(jj).cluster(kk).fids(1));
+			if n_frames < opts.n_frames
+				n_frames = opts.n_frames;
+			elseif n_frames > 50
+				n_frames = 50;
+			end
+			
             %% Demotion
             success = false;
             dmi = 0;
@@ -156,7 +178,7 @@ for ii=1:numel(opts.mod_order)
                 
                 % Create .dmb
                 [~, dmb_fname, status, stdout] = deploy_createDmb(...
-                    'C:\Python27\python.exe', ...
+                    paths, ...
                     fullfile(paths.tmp, prime_fname), ...
                     'cal_full_fname', fullfile(paths.cal, dsin.filename), ...
                     'lps', lps, 'lbss', LBSS, 'ncc_thr', ncc_thr, ...
@@ -167,16 +189,16 @@ for ii=1:numel(opts.mod_order)
                     'ffrMinFrames', 3, ...
                     'srMinFrames',  3, ...
                     'ffrSaveSeq', false, ...
-                    'srSaveSeq', true, ... % todo: set to false if speed is a concern
+                    'srSaveSeq', true, ...
                     'appendText', append_text);
-                % todo: don't bother with secondaries at 
+				% todo: don't bother with secondaries until after success is achieved
                 if status
                     error(stdout);
                 end
                 
                 %% Call DeMotion Motion Estimation
                 [status, stdout] = deploy_callDemotion(...
-                    'C:\Python27\python.exe', ...
+                    paths, ...
                     paths.tmp, dmb_fname, false);
                 if status
                     error(stdout);
@@ -200,7 +222,7 @@ for ii=1:numel(opts.mod_order)
                     % Apply the threshold and compute the registered
                     % average
                     [status, stdout] = deploy_reprocess(...
-                        fullfile(paths.tmp, dmp_fname), ncc_thr);
+                        fullfile(paths.tmp, dmp_fname), ncc_thr, paths);
                     if status ~= 1
                         % Error handling will be managed below
                         break;
