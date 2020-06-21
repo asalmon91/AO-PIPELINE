@@ -90,6 +90,11 @@ if exist('current_modality', 'var') ~=0 && ~isempty(current_modality)
         return;
     end
     EDGE_CUTOFF = round(0.05*size(bin_map, 1));
+	if EDGE_CUTOFF < 1
+		% Default contiguous is false
+		% An image this small cannot succeed
+		return;
+	end
     row_contribution = mean(bin_map, 2);
     contiguous = ~any(...
         row_contribution(EDGE_CUTOFF:end-EDGE_CUTOFF) < min_frames);

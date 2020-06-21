@@ -51,6 +51,10 @@ else
 end
 frames = tidyClusters(frames);
 
+if all([frames.rej])
+	frames(1).TRACK_MOTION_FAILED = true;
+end
+
 % waitbar(1,wb,'Done!');
 
 end

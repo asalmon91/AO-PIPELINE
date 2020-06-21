@@ -96,7 +96,15 @@ for ii=1:numel(opts.mod_order)
     end
     
     %% ARFS
-	frames = arfs(gather(vid), 'pcc_thr', opts.pcc_thrs(ii), 'mfpc', 10);
+	frames = arfs(vid, 'pcc_thr', opts.pcc_thrs(ii), 'mfpc', opts.n_frames);
+	vid_set.vids(ii).frames = frames;
+	if ~isfield(frames, 'TRACK_MOTION_FAILED')
+		% Pick the best frame from each cluster
+		fids = get_best_n_frames_per_cluster(frames, 1);
+	else
+		% If motion tracking failed, just pick the one frame with the best PCC
+		fids = get_best_n_frames_overall(frames, 1);
+	end
 % 	try
 % 		frames = arfs(vid, 'pcc_thr', opts.pcc_thrs(ii), 'mfpc', 10);
 % 	catch me
@@ -104,8 +112,7 @@ for ii=1:numel(opts.mod_order)
 %             frames = arfs(gather(vid), 'pcc_thr', opts.pcc_thrs(ii), 'mfpc', 10);
 % 		end
 % 	end
-    vid_set.vids(ii).frames = frames;
-    fids = get_best_n_frames_per_cluster(frames, 1);
+    
 %     n_frames = get_n_not_rejected(frames, ...
 %         {'rejectSmallGroups'; 'rejectSmallClusters'; 'firstFrame'});
 %     n_frames = get_n_not_rejected(frames, {'firstFrame'});
@@ -132,10 +139,11 @@ for ii=1:numel(opts.mod_order)
             mkdir(paths.tmp);
             % Copy all videos to this folder
             all_fnames = [{prime_fname}; sec_fnames];
-            for mm=1:numel(all_fnames)
+			for mm=1:numel(all_fnames)
                 copyfile(fullfile(paths.raw, all_fnames{mm}), paths.tmp)
-            end
-            % Also write a binary video for analytics
+			end
+			
+            %% Binary video for analytics
             bin_fname = strrep(prime_fname, opts.mod_order{ii}, 'bin');
             new_sec_fname_str = [sec_fname_str, ', ',bin_fname];
             fn_write_AVI(fullfile(paths.tmp, bin_fname), ...
@@ -160,12 +168,16 @@ for ii=1:numel(opts.mod_order)
             fids(jj).cluster(kk).ncc_thr    = NCC_THR_0;
 %             fids(jj).cluster(kk).lps_thr_lut = candidate_ncc_thr_lut;
             
-			% Get number of frames to register and average
-			n_frames = get_n_frames(frames, fids(jj).cluster(kk).fids(1));
-			if n_frames < opts.n_frames
+			%% Get number of frames to register and average
+			if ~isfield(frames, 'TRACK_MOTION_FAILED')
+				n_frames = get_n_frames(frames, fids(jj).cluster(kk).fids(1));
+				if n_frames < opts.n_frames
+					n_frames = opts.n_frames;
+				elseif n_frames > 50
+					n_frames = 50;
+				end
+			else
 				n_frames = opts.n_frames;
-			elseif n_frames > 50
-				n_frames = 50;
 			end
 			
             %% Demotion
@@ -241,7 +253,7 @@ for ii=1:numel(opts.mod_order)
                 %% DeMotion feedback
                 % Get output parameters
                 if status == 1
-                    [ht, ~, nFrames, nCrop, ~, tif_fname, contiguous] = ...
+                    [ht, ~, nFrames, nCrop, ~, tif_fname, ~] = ...
                         getOutputSizeAndN(paths.imgs, dmb_fname, ...
                         opts.mod_order{ii}, opts.n_frames);
                     tif_fnames = strrep(tif_fname, opts.mod_order{ii}, mods);
@@ -253,7 +265,7 @@ for ii=1:numel(opts.mod_order)
                 
                 % Check against criteria
                 if ht >= FAIL_HT && nCrop > FAIL_CROP && ...
-                        nFrames > opts.n_frames && contiguous
+                        nFrames >= opts.n_frames %&& contiguous
                     if vid_set.profiling
                         vid_set.t_proc_ra = clock;
                     end
