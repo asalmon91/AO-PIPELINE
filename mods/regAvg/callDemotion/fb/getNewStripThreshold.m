@@ -15,7 +15,7 @@ THR_DEF = 1; % standard deviations away from the mean
 pe = pyenv;
 if isempty(pe.Version) || str2double(pe.Version) >= 3
     try
-        pyenv('Version', 2.7)
+        pyenv('Version', '2.7')
     catch me
         error('Python 2.7 is required... I think')
     end
