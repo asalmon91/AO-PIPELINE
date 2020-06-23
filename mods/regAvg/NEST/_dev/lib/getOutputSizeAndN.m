@@ -55,12 +55,29 @@ end
 sr_avi_path = fullfile(out_proc, '..', 'SR_AVIs');
 avi_search = dir(fullfile(sr_avi_path, [dmb_name, '*.avi']));
 if ~isempty(avi_search)
-    if numel(avi_search) > 1
-        % Use most recent one
-        avi_search = avi_search([avi_search.datenum] == max([avi_search.datenum]));
-    end
-    vr = VideoReader(fullfile(avi_search.folder, avi_search.name));
-    nFrames = vr.NumFrames;
+	if numel(avi_search) > 1
+		% Use most recent one
+		avi_search = avi_search([avi_search.datenum] == max([avi_search.datenum]));
+	end
+	
+	% Like persistent load, but just for finding the number of frames... This is not ideal
+	read_success = false;
+	read_iter = 0;
+	max_iter = 100;
+	while ~read_success && read_iter < max_iter
+		try
+			vr = VideoReader(fullfile(avi_search.folder, avi_search.name)); %#ok<TNMLP>
+			nFrames = vr.NumFrames;
+			read_success = true;
+		catch me
+			% todo: check for specific codec-related error
+			warning(me.message);
+			read_iter = read_iter+1;
+		end
+	end
+	if ~read_success
+		error(me);
+	end
 else
     % Use filename
     nFrames = str2double(nameparts{find(strcmp(nameparts, 'n'))+1});
