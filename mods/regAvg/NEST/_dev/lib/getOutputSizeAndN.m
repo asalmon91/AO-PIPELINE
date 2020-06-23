@@ -76,7 +76,7 @@ if ~isempty(avi_search)
 		end
 	end
 	if ~read_success
-		error(me);
+		rethrow(me);
 	end
 else
     % Use filename
