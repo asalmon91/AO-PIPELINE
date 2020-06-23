@@ -59,8 +59,12 @@ if ~isempty(avi_search)
         % Use most recent one
         avi_search = avi_search([avi_search.datenum] == max([avi_search.datenum]));
     end
+    
+    
     vr = VideoReader(fullfile(avi_search.folder, avi_search.name));
     nFrames = vr.NumFrames;
+    
+    
 else
     % Use filename
     nFrames = str2double(nameparts{find(strcmp(nameparts, 'n'))+1});
