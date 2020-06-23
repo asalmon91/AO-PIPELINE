@@ -96,7 +96,7 @@ for ii=1:numel(opts.mod_order)
     end
     
     %% ARFS
-	frames = arfs(gather(vid), 'pcc_thr', opts.pcc_thrs(ii), 'mfpc', opts.n_frames);
+	frames = arfs(vid, 'pcc_thr', opts.pcc_thrs(ii), 'mfpc', opts.n_frames);
 	vid_set.vids(ii).frames = frames;
 	if ~isfield(frames, 'TRACK_MOTION_FAILED')
 		% Pick the best frame from each cluster
