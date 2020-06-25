@@ -1,4 +1,4 @@
-function live_data = ao_pipe(varargin)
+function ao_pipe(varargin)
 %live_pipe Waits for new videos in root_path and begins processing them
 % optional "name, value" pair input arguments include:
 %   #root_path: the full path to the directory which contains the "Raw" and
@@ -194,7 +194,7 @@ for ii=1:numel(gui.root_path_list)
 		opts.subject = gui.subject;
 	end
     
-    % Get arfs parameters
+    %% Get arfs parameters
     search = subdir('pcc_thresholds.txt');
     if numel(search) == 1
         opts.pcc_thrs = ...
@@ -205,6 +205,14 @@ for ii=1:numel(gui.root_path_list)
     end
     save(fullfile(paths.root, pipe_data.filename), 'pipe_data', 'opts', 'paths')
 
+	%% Update all databases
+	pipe_data = updateAllDB(pipe_data, paths, opts, gui);
+	
+	%% Get position file for automontaging
+	pipe_data = prepPennAutoMontage(pipe_data, paths);
+	
+	%% Processing
+	
     %% Calibration
     pipe_data = calibrate_FULL(pipe_data, paths, opts, q, gui);
     save_full_pipe(pipe_data, opts, paths);
