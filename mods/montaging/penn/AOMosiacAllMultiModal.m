@@ -506,240 +506,264 @@ save(fullfile(outputDir,'AOMontageSave'),'LocXY','inData','TransType',...
     'ResultsTransformToRef','f_all','d_all','N','ResultsScaleToRef','MatchedTo','TotalTransform',...
     'RelativeTransformToRef');
 
+%% Prep .jsx file
+jsx_ffname = fullfile(outputDir, 'buildMontage.jsx');
+fid = fopen(jsx_ffname, 'w');
+
+canvas_size = [length(vr) length(ur)];
+%     psconfig( 'pixels', 'pixels', 10, 'no' );
+fid = jsx_configure(fid);
+% 	psnewdoc( canvas_size(2), canvas_size(1), 72, ['SAVE_ME_AS_SOMETHING_NICE.psd'], 'grayscale');
+fid = jsx_initDoc(fid, canvas_size(1), canvas_size(2), 72, 'untitled_montage.psd', 'grayscale');
+
 %% Determine the dominant direction of each shifted image
 Global=[1 0 0; 0 1 0;-minXAll -minYAll 1];
-if export_to_pshop
-    group_directions = cell(NumOfRefs,1);
-    for i = 1: NumOfRefs
-        for n = RefChains{i}
-            
-            % If we had 3 columns and we're not using the canon, then we can determine which should go in the
-            % "fovea" bin.
-            if ~strcmp(device_mode, 'canon') && (NC >= 3)
-                if any(strcmpi(strtrim(ID{n}), {'TRC','TR','MTE','MT','TM','TLC','TL',...
-                        'MRE','MR','C','CENTER','MLE','ML'...
-                        'BRC','BR','MBE','MB','BM','BLC','BL',}))
-                    group_directions{n} = 'Fovea';
-                    continue;
-                end
-            end
-            
-            H = TotalTransform(:,:,n);
-            
-            [greaterdist ind] = max( abs(H(1:2,3)) );
-            
-            if ind==1
-                if sign(H(ind,3)) == 1
-                    if strcmpi(eyeSide,'os')
-                        group_directions{n} = 'Temporal';
-                    elseif strcmpi(eyeSide,'od')
-                        group_directions{n} = 'Nasal';
-                        
-                    end
-                else
-                    if strcmpi(eyeSide,'os')
-                        group_directions{n} = 'Nasal';
-                    elseif strcmpi(eyeSide,'od')
-                        group_directions{n} = 'Temporal';
-                    end
-                end
-            else
-                if sign(H(ind,3)) == 1
-                    group_directions{n} = 'Superior';
-                else
-                    group_directions{n} = 'Inferior';
-                end
-            end
-        end
-    end
-    %%
-    % Only make folders for directions we have in the dataset.
-    numfov = unique(pixelScale);
-    for f=1:length(numfov)
-        unique_directions{f} = unique(group_directions(pixelScale==numfov(f)));
-    end
-    canvas_size = [length(vr) length(ur)];
-    
-    psconfig( 'pixels', 'pixels', 10, 'no' );
-    psnewdoc( canvas_size(2), canvas_size(1), 72, ['SAVE_ME_AS_SOMETHING_NICE.psd'], 'grayscale');
-    
-    % The sorting goes FOV->Modality->Direction
-    for f=length(fovlist):-1:1
-        make_Photoshop_group( fovlist{f} );
-        for m=MN:-1:1 %Make them backwards so that confocal is on top.
-            
-            make_Photoshop_group( strrep(ModalitiesSrchStrings{m},'_','') );
-            add_to_Photoshop_group( fovlist{f}, 0 );
-            
-            for k=1: length(unique_directions{f})
-                if ~isempty(unique_directions{f}{k})
-                    make_Photoshop_group( unique_directions{f}{k} );
-                    add_to_Photoshop_group( strrep(ModalitiesSrchStrings{m},'_',''), 0);
-                end
-                setActiveLayer(fovlist{f}, 1);
-            end
-        end
-        % Make the active layer the next FOV
-        setActiveLayer(fovlist{f}, 1);
-    end
-    
-    %%
-    for i = 1: NumOfRefs
-        for n = RefChains{i}
-            loadednames={};
-            for m=1: MN
-                if ~isempty(imageFilename{m,n})
-                    %Read each image, and then transform
-                    im = imresize( imread(char(imageFilename{m,n})),pixelScale(n) ); % They need to be pretty for output! Keep it bicubic
-                    
-                    if size(im,3) == 2
-                        im=padarray(im, [length(vr) length(ur) 2]-size(im),0,'post');
-                    else
-                        im=padarray(im, [length(vr) length(ur)]-size(im),0,'post');
-                    end
-                    
-                    H = TotalTransform(:,:,n);
-                    H = pinv(H');
-                    H(:,3)=[0;0;1];
-                  
-                    tform = affine2d(H*Global);
-                    im_=imwarp(im, imref2d(size(im)), tform,'OutputView', imref2d(size(im)));
-                    
-                    [pathstr,name,ext] = fileparts(char(imageFilename{m,n})) ;
-                    
-                    loadednames{m} = name;
-                    
-                    if size(im_,3) == 2
-                        nonzero = im_(:,:,2)>0;
-                        im_ = im_(:,:,1);
-                    else                        
-                        nonzero = im_>0;                            
-                    end
-                    
-                    if(isa(im,'double') || isa(im,'single'))
-                        im_(:,:,1) = uint8(round(im_*255));
-                        im_(:,:,2) = uint8(round(nonzero*255)); 
-                    else
-                        im_(:,:,1) = uint8(round(im_));
-                        im_(:,:,2) = uint8(round(nonzero*255)); 
-                    end
-                    
-                    saveName=[name,'_aligned_to_ref',num2str(i),'_m',num2str(m)];
-                    psnewlayer(saveName);
-                    
-                    pssetpixels(im_(:,:,2),16);
-                    pssetpixels(im_(:,:,1), 'undefined');
-                    
-                    add_to_Photoshop_group(num2str(pixelScale(n),'%0.2f'),1) % FOV
-                    add_to_Photoshop_group(ModalitiesSrchStrings{m},0) %Modality
-                    add_to_Photoshop_group(group_directions{n},0) % Direction
-                    
-                    numWritten = numWritten+1;
-                    waitbar(numWritten/(N*MN),h,strcat('Writing to Photoshop (',num2str(100*numWritten/(N*MN),3),'%)'));
-                end
-            end
-            % Link the layers we just imported
-            link_Photoshop_layers(loadednames);
-        end
-    end
+group_directions = cell(NumOfRefs,1);
+for i = 1: NumOfRefs
+	for n = RefChains{i}
+
+		% If we had 3 columns and we're not using the canon, then we can determine which should go in the
+		% "fovea" bin.
+		if ~strcmp(device_mode, 'canon') && (NC >= 3)
+			if any(strcmpi(strtrim(ID{n}), {'TRC','TR','MTE','MT','TM','TLC','TL',...
+					'MRE','MR','C','CENTER','MLE','ML'...
+					'BRC','BR','MBE','MB','BM','BLC','BL',}))
+				group_directions{n} = 'Fovea';
+				continue;
+			end
+		end
+
+		H = TotalTransform(:,:,n);
+
+		[greaterdist ind] = max( abs(H(1:2,3)) );
+
+		if ind==1
+			if sign(H(ind,3)) == 1
+				if strcmpi(eyeSide,'os')
+					group_directions{n} = 'Temporal';
+				elseif strcmpi(eyeSide,'od')
+					group_directions{n} = 'Nasal';
+
+				end
+			else
+				if strcmpi(eyeSide,'os')
+					group_directions{n} = 'Nasal';
+				elseif strcmpi(eyeSide,'od')
+					group_directions{n} = 'Temporal';
+				end
+			end
+		else
+			if sign(H(ind,3)) == 1
+				group_directions{n} = 'Superior';
+			else
+				group_directions{n} = 'Inferior';
+			end
+		end
+	end
 end
+
+%% Only make folders for directions we have in the dataset.
+numfov = unique(pixelScale);
+for f=1:length(numfov)
+	unique_directions{f} = unique(group_directions(pixelScale==numfov(f)));
+end
+
+% The sorting goes FOV->Modality->Direction
+for f=length(fovlist):-1:1
+%         make_Photoshop_group( fovlist{f} );
+	fid = jsx_createGroup(fid, fovlist{f});
+	for m=MN:-1:1 %Make them backwards so that confocal is on top.
+
+%             make_Photoshop_group( strrep(ModalitiesSrchStrings{m},'_','') );
+		fid = jsx_createGroup(fid, strrep(ModalitiesSrchStrings{m},'_','') );
+%             add_to_Photoshop_group( fovlist{f}, 0 );
+		fid = jsx_addToGroup(fid, fovlist{f}, 0);
+
+		for k=1: length(unique_directions{f})
+			if ~isempty(unique_directions{f}{k})
+%                     make_Photoshop_group( unique_directions{f}{k} );
+%                     add_to_Photoshop_group( strrep(ModalitiesSrchStrings{m},'_',''), 0);
+				fid = jsx_createGroup(fid, unique_directions{f}{k});
+				fid = jsx_addToGroup(fid, strrep(ModalitiesSrchStrings{m},'_',''), 0);
+			end
+%                 setActiveLayer(fovlist{f}, 1);
+			fid = jsx_setActiveLayer(fid, fovlist{f}, 1);
+		end
+	end
+	% Make the active layer the next FOV
+%         setActiveLayer(fovlist{f}, 1);
+	fid = jsx_setActiveLayer(fid, fovlist{f}, 1);
+end
+
+%% Transform images, write to file, write import instructions
+for i = 1: NumOfRefs
+	for n = RefChains{i}
+		loadednames={};
+		for m=1:MN
+			if ~isempty(imageFilename{m,n})
+				%Read each image, and then transform
+				im = imresize( imread(char(imageFilename{m,n})),pixelScale(n) ); % They need to be pretty for output! Keep it bicubic
+
+				if size(im,3) == 2
+					im=padarray(im, [length(vr) length(ur) 2]-size(im),0,'post');
+				else
+					im=padarray(im, [length(vr) length(ur)]-size(im),0,'post');
+				end
+
+				H = TotalTransform(:,:,n);
+				H = pinv(H');
+				H(:,3)=[0;0;1];
+
+				tform = affine2d(H*Global);
+				im_=imwarp(im, imref2d(size(im)), tform,'OutputView', imref2d(size(im)));
+
+				[pathstr,name,ext] = fileparts(char(imageFilename{m,n})) ;
+
+				loadednames{m} = name;
+
+				if size(im_,3) == 2
+					nonzero = im_(:,:,2)>0;
+					im_ = im_(:,:,1);
+				else
+					nonzero = im_>0;
+				end
+
+				%% Write .tif to file
+				% Prep output
+				saveName=[name,'_aligned_to_ref',num2str(i),'_m',num2str(m)];
+%                     psnewlayer(saveName);
+				fid = jsx_newLayer(fid, saveName); % todo: probably won't need 
+				
+				% Write image
+				if(isa(im, 'double') || isa(im, 'single'))
+					im_(:,:,1) = uint8(round(im_*255));
+					im_(:,:,2) = uint8(round(nonzero*255));
+					saveTifDouble(single(im_), outputDir, saveName);
+				else
+					im_(:,:,1) = uint8(round(im_));
+					im_(:,:,2) = uint8(round(nonzero*255));
+					saveTif(im_, outputDir, saveName);
+				end
+				
+				%% Add import .tif to .jsx
+%                     pssetpixels(im_(:,:,2), 16);
+%                     pssetpixels(im_(:,:,1), 'undefined');
+				pssetpixels(im_(:,:,2), 16);
+				pssetpixels(im_(:,:,1), 'undefined');
+
+				add_to_Photoshop_group(num2str(pixelScale(n),'%0.2f'),1) % FOV
+				add_to_Photoshop_group(ModalitiesSrchStrings{m},0) %Modality
+				add_to_Photoshop_group(group_directions{n},0) % Direction
+
+				%% Update progress
+				numWritten = numWritten+1;
+				waitbar(numWritten./N*MN,h,['Writing Outputs (',num2str(100*numWritten./(N*MN),3),'%)']);
+% 				numWritten = numWritten+1;
+% 				waitbar(numWritten/(N*MN),h,strcat('Writing to Photoshop (',num2str(100*numWritten/(N*MN),3),'%)'));
+			end
+		end
+		% Link the layers we just imported
+		link_Photoshop_layers(loadednames);
+	end
+end
+
 
 
 %save tmp.mat;
 %%
-for m = 1:MN
-    
-    %initialize blank combined image of all pieces for the modality
-    imCombinedAll = zeros(length(vr),length(ur), 'uint8');
-    
-    for i = 1: NumOfRefs
-        if ~isempty(imageFilename{m,AllRefIndex(i)})
-            %initialize blank combined image for the modality/piece
-            imCombined = zeros(length(vr),length(ur), 'uint8');
-            
-            for n = RefChains{i}
-                if ~isempty(imageFilename{m,n})
-                    %read each image, and then transform
-                    im = imresize( imread(char(imageFilename{m,n})),pixelScale(n) );
-
-                    H = TotalTransform(:,:,n);
-                    H = pinv(H');
-                    H(:,3)=[0;0;1];
-                  
-                    tform = affine2d(H*Global);
-                    im_=imwarp(im, imref2d(size(im)), tform,'OutputView', imref2d(size(imCombined)));
-                    
-                    %save each individually transformed image
-                    [pathstr,name,ext] = fileparts(char(imageFilename{m,n})) ;
-
-                    if size(im_,3) == 2
-                        nonzero = im_(:,:,2)>0;
-                        im_ = im_(:,:,1);
-                    else
-                        % Warp a binary image as well to keep these pixels
-                        % non-transparent even if they're 0
-                        nonzero = imwarp(ones(size(im)), ...
-                            imref2d(size(im)), tform, ...
-                            'OutputView', imref2d(size(imCombined)));
-                        im_(:,:,2) = nonzero;
-                        %nonzero = im_>0;                            
-                    end
-                                                
-                    %add to combined image
-                    %imCombined(nonzero) = im_(nonzero);
-
-                    %save
-                    saveFileName=[name,'_aligned_to_ref',num2str(i),'_m',num2str(m),'.tif'];
-                    
-                    if(isa(im,'double') || isa(im,'single'))%if input was floating point, save as single
-                        im_(:,:,2) = nonzero; 
-                        saveTifDouble(single(im_),outputDir,saveFileName);
-                    else%else save as uint8
-                        im_(:,:,1) = uint8(round(im_(:,:,1)));
-                        im_(:,:,2) = uint8(round(nonzero*255)); 
-
-                        saveTif(im_,outputDir,saveFileName);
-                    end
-                    
-                    numWritten = numWritten+1;
-                    waitbar(numWritten./N*MN,h,['Writing Outputs (',num2str(100*numWritten./(N*MN),3),'%)']);
-                end
-            end
-        end
-        
-        %add to all combined image
-        nonzero = imCombined>0;
-        imCombinedAll(nonzero) = imCombined(nonzero);
-        imCombined(:,:,2) = round(nonzero*255);
-        
-        %save combined image for each piece - removed for memory concerns.
-        if(NumOfRefs > 1)%only necessary if more than one piece
-            saveFileName = strcat('ref_',num2str(i),'_combined_m',num2str(m),'.tif');
-            
-            if(AppendToExisting)
-                outNameList{i+1,m}=fullfile('Append',saveFileName);
-            else
-                outNameList{i+1,m}=saveFileName;
-            end
-            
-            saveTif(imCombined,outputDir,saveFileName);
-        end
-    end
-    
-    %save the combined image of all the pieces
-    saveFileName = strcat('all_ref_combined_m',num2str(m),'.tif');
-    if(AppendToExisting)
-        outNameList{1,m}=fullfile('Append',saveFileName);
-    else
-        outNameList{1,m}=saveFileName;
-    end
-    
-    nonzero = imCombinedAll>0;
-    imCombinedAll(:,:,2) = round(nonzero*255);
-    
-    saveTif(imCombinedAll,outputDir,saveFileName);
-    
-end
+% for m = 1:MN
+%     
+%     %initialize blank combined image of all pieces for the modality
+%     imCombinedAll = zeros(length(vr),length(ur), 'uint8');
+%     
+%     for i = 1: NumOfRefs
+%         if ~isempty(imageFilename{m,AllRefIndex(i)})
+%             %initialize blank combined image for the modality/piece
+%             imCombined = zeros(length(vr),length(ur), 'uint8');
+%             
+%             for n = RefChains{i}
+%                 if ~isempty(imageFilename{m,n})
+%                     %read each image, and then transform
+%                     im = imresize( imread(char(imageFilename{m,n})),pixelScale(n) );
+% 
+%                     H = TotalTransform(:,:,n);
+%                     H = pinv(H');
+%                     H(:,3)=[0;0;1];
+%                   
+%                     tform = affine2d(H*Global);
+%                     im_=imwarp(im, imref2d(size(im)), tform,'OutputView', imref2d(size(imCombined)));
+%                     
+%                     %save each individually transformed image
+%                     [pathstr,name,ext] = fileparts(char(imageFilename{m,n})) ;
+% 
+%                     if size(im_,3) == 2
+%                         nonzero = im_(:,:,2)>0;
+%                         im_ = im_(:,:,1);
+%                     else
+%                         % Warp a binary image as well to keep these pixels
+%                         % non-transparent even if they're 0
+%                         nonzero = imwarp(ones(size(im)), ...
+%                             imref2d(size(im)), tform, ...
+%                             'OutputView', imref2d(size(imCombined)));
+%                         im_(:,:,2) = nonzero;
+%                         %nonzero = im_>0;                            
+%                     end
+%                                                 
+%                     %add to combined image
+%                     %imCombined(nonzero) = im_(nonzero);
+% 
+%                     %save
+%                     saveFileName=[name,'_aligned_to_ref',num2str(i),'_m',num2str(m),'.tif'];
+%                     
+%                     if(isa(im,'double') || isa(im,'single'))%if input was floating point, save as single
+%                         im_(:,:,2) = nonzero; 
+%                         saveTifDouble(single(im_),outputDir,saveFileName);
+%                     else%else save as uint8
+%                         im_(:,:,1) = uint8(round(im_(:,:,1)));
+%                         im_(:,:,2) = uint8(round(nonzero*255)); 
+% 
+%                         saveTif(im_,outputDir,saveFileName);
+%                     end
+%                     
+%                     numWritten = numWritten+1;
+%                     waitbar(numWritten./N*MN,h,['Writing Outputs (',num2str(100*numWritten./(N*MN),3),'%)']);
+%                 end
+%             end
+%         end
+%         
+%         %add to all combined image
+%         nonzero = imCombined>0;
+%         imCombinedAll(nonzero) = imCombined(nonzero);
+%         imCombined(:,:,2) = round(nonzero*255);
+%         
+%         %save combined image for each piece - removed for memory concerns.
+%         if(NumOfRefs > 1)%only necessary if more than one piece
+%             saveFileName = strcat('ref_',num2str(i),'_combined_m',num2str(m),'.tif');
+%             
+%             if(AppendToExisting)
+%                 outNameList{i+1,m}=fullfile('Append',saveFileName);
+%             else
+%                 outNameList{i+1,m}=saveFileName;
+%             end
+%             
+%             saveTif(imCombined,outputDir,saveFileName);
+%         end
+%     end
+%     
+%     %save the combined image of all the pieces
+%     saveFileName = strcat('all_ref_combined_m',num2str(m),'.tif');
+%     if(AppendToExisting)
+%         outNameList{1,m}=fullfile('Append',saveFileName);
+%     else
+%         outNameList{1,m}=saveFileName;
+%     end
+%     
+%     nonzero = imCombinedAll>0;
+%     imCombinedAll(:,:,2) = round(nonzero*255);
+%     
+%     saveTif(imCombinedAll,outputDir,saveFileName);
+%     
+% end
 close(h)
 runtime=toc
 
