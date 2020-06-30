@@ -137,7 +137,7 @@ script = [
 % psjavascript(script);
 
 %% Write to file
-fprintf(fid, script);
+fprintf(fid_in, script);
 
 end
 

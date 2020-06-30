@@ -1,4 +1,5 @@
-function [outNameList, imageFilename, TotalTransform, f_all, d_all] = AOMosiacAllMultiModal(imageDir, posFileLoc, outputDir, device_mode, ModalitiesSrchStrings,TransType,AppendToExisting,MontageSave,export_to_pshop,featureType)
+function [outNameList, imageFilename, TotalTransform, f_all, d_all, jsx_ffname] = ...
+	AOMosiacAllMultiModal(imageDir, posFileLoc, outputDir, device_mode, ModalitiesSrchStrings,TransType,AppendToExisting,MontageSave,export_to_pshop,featureType)
 %Main AO Montaging Function that creates a full montage from an input
 %directory with images and nominal coordinate location
 %Inputs:
@@ -512,9 +513,9 @@ fid = fopen(jsx_ffname, 'w');
 
 canvas_size = [length(vr) length(ur)];
 %     psconfig( 'pixels', 'pixels', 10, 'no' );
-fid = jsx_configure(fid);
+jsx_configure(fid);
 % 	psnewdoc( canvas_size(2), canvas_size(1), 72, ['SAVE_ME_AS_SOMETHING_NICE.psd'], 'grayscale');
-fid = jsx_initDoc(fid, canvas_size(1), canvas_size(2), 72, 'untitled_montage.psd', 'grayscale');
+jsx_initDoc(fid, canvas_size(1), canvas_size(2), 72, 'untitled_montage.psd', 'grayscale');
 
 %% Determine the dominant direction of each shifted image
 Global=[1 0 0; 0 1 0;-minXAll -minYAll 1];
@@ -583,16 +584,16 @@ for f=length(fovlist):-1:1
 			if ~isempty(unique_directions{f}{k})
 %                     make_Photoshop_group( unique_directions{f}{k} );
 %                     add_to_Photoshop_group( strrep(ModalitiesSrchStrings{m},'_',''), 0);
-				fid = jsx_createGroup(fid, unique_directions{f}{k});
-				fid = jsx_addToGroup(fid, strrep(ModalitiesSrchStrings{m},'_',''), 0);
+				jsx_createGroup(fid, unique_directions{f}{k});
+				jsx_addToGroup(fid, strrep(ModalitiesSrchStrings{m},'_',''), 0);
 			end
 %                 setActiveLayer(fovlist{f}, 1);
-			fid = jsx_setActiveLayer(fid, fovlist{f}, 1);
+			jsx_setActiveLayer(fid, fovlist{f}, 1);
 		end
 	end
 	% Make the active layer the next FOV
 %         setActiveLayer(fovlist{f}, 1);
-	fid = jsx_setActiveLayer(fid, fovlist{f}, 1);
+	jsx_setActiveLayer(fid, fovlist{f}, 1);
 end
 
 %% Transform images, write to file, write import instructions
@@ -628,46 +629,55 @@ for i = 1: NumOfRefs
 					nonzero = im_>0;
 				end
 
-				%% Write .tif to file
-				% Prep output
+				%% Prep output
 				saveName=[name,'_aligned_to_ref',num2str(i),'_m',num2str(m)];
+				saveFileName = [saveName, '.tif'];
 %                     psnewlayer(saveName);
 				fid = jsx_newLayer(fid, saveName); % todo: probably won't need 
 				
-				% Write image
+				%% Write image to file
 				if(isa(im, 'double') || isa(im, 'single'))
 					im_(:,:,1) = uint8(round(im_*255));
 					im_(:,:,2) = uint8(round(nonzero*255));
-					saveTifDouble(single(im_), outputDir, saveName);
+					saveTifDouble(single(im_), outputDir, saveFileName);
 				else
 					im_(:,:,1) = uint8(round(im_));
 					im_(:,:,2) = uint8(round(nonzero*255));
-					saveTif(im_, outputDir, saveName);
+					saveTif(im_, outputDir, saveFileName);
 				end
 				
 				%% Add import .tif to .jsx
-%                     pssetpixels(im_(:,:,2), 16);
-%                     pssetpixels(im_(:,:,1), 'undefined');
-				pssetpixels(im_(:,:,2), 16);
-				pssetpixels(im_(:,:,1), 'undefined');
+% 				pssetpixels(im_(:,:,2), 16);
+% 				pssetpixels(im_(:,:,1), 'undefined');
+				jsx_setPixels(fid, outputDir, im_(:,:,2), 16);
+				[~, tmp_folder_to_delete] = jsx_setPixels(fid, outputDir, im_(:,:,1));
+% 				fid = jsx_openFileInPS(fid, fullfile(outputDir, saveFileName));
 
-				add_to_Photoshop_group(num2str(pixelScale(n),'%0.2f'),1) % FOV
-				add_to_Photoshop_group(ModalitiesSrchStrings{m},0) %Modality
-				add_to_Photoshop_group(group_directions{n},0) % Direction
-
+% 				add_to_Photoshop_group(num2str(pixelScale(n),'%0.2f'),1) % FOV
+% 				add_to_Photoshop_group(ModalitiesSrchStrings{m},0) %Modality
+% 				add_to_Photoshop_group(group_directions{n},0) % Direction
+				jsx_addToGroup(fid, num2str(pixelScale(n),'%0.2f'), 1); % FOV
+				jsx_addToGroup(fid, strrep(ModalitiesSrchStrings{m},'_',''), 0); %Modality
+				jsx_addToGroup(fid, group_directions{n},0); % Direction
+				
 				%% Update progress
 				numWritten = numWritten+1;
-				waitbar(numWritten./N*MN,h,['Writing Outputs (',num2str(100*numWritten./(N*MN),3),'%)']);
+				waitbar(numWritten./N*MN,h, ...
+					['Writing Outputs (', num2str(100*numWritten./(N*MN),3), '%)']);
 % 				numWritten = numWritten+1;
 % 				waitbar(numWritten/(N*MN),h,strcat('Writing to Photoshop (',num2str(100*numWritten/(N*MN),3),'%)'));
 			end
 		end
 		% Link the layers we just imported
-		link_Photoshop_layers(loadednames);
+		jsx_linkLayers(fid, loadednames);
 	end
 end
 
+%% Close .jsx
+fclose(fid);
 
+%% Run .jsx
+winopen(jsx_ffname);
 
 %save tmp.mat;
 %%

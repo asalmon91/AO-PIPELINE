@@ -1,4 +1,4 @@
-function [outputArg1,outputArg2] = jsx_setPixels(fid_in, p, c, t, l, b, r)
+function [fid_in, tmpfolder] = jsx_setPixels(fid_in, path_in, p, c, t, l, b, r)
 %jsx_setPixels sets the pixel values for the current layer
 %PSSETPIXELS    Set pixel data to the current layer in Photoshop.
 %   PSSETPIXELS(P) P is a H-by-W-by-C pixel matrix containing all the active
@@ -57,8 +57,16 @@ function [outputArg1,outputArg2] = jsx_setPixels(fid_in, p, c, t, l, b, r)
 %	are deleted during the course of running this function, then calling it after the fact won't add
 %	any images. We're going to need to look into placing the images from a file.
 
-psmatfile = fullfile(tempdir, 'pspixels.bin');
-psmatfile = strrep(psmatfile, '\', '\\');
+%% Make a temporary file for photoshop to read
+% todo: oh yeah, this is definietly simpler than just being able to place an image from file
+tmpfolder = fullfile(path_in, 'tmp');
+if ~exist(tmpfolder, 'dir') 
+	mkdir(tmpfolder);
+end
+nameparts = strsplit(tempname, filesep);
+tmpname = [nameparts{end}, '.bin'];
+psmatfile = fullfile(tmpfolder, tmpname);
+psmatfile = strrep(psmatfile, '\', '\\\\');
 
 if exist(psmatfile, 'file')
     delete(psmatfile);
@@ -96,7 +104,7 @@ if f ~= -1
 	fwrite(f, bpp, 'int32');
 
 	if isa(p, 'uint8')
-	    fwrite(f, p);
+	    fwrite(f, p, 'uint8');
 	elseif isa(p, 'uint16')
 	    fwrite(f, p, 'uint16');
 	else
@@ -114,11 +122,11 @@ if f ~= -1
 	pstext = [pstext 'desc.putEnumerated( app.charIDToTypeID( "Cmd " ), app.charIDToTypeID( "TCmd" ), app.charIDToTypeID( "MatP" ) );'];
 
 	if exist('c', 'var')
-	    if isnumeric(c)
-	        pstext = [pstext '     desc.putInteger( charIDToTypeID( "Type" ), "' num2str(c) '" );'];
-	    elseif ischar(c)
+		if isnumeric(c)
+			pstext = [pstext '     desc.putInteger( charIDToTypeID( "Type" ), "' num2str(c) '" );'];
+		elseif ischar(c)
 			if ~strcmp(c, 'undefined')
-	            pstext = [pstext '     desc.putString( charIDToTypeID( "ChnN" ), "' c '" );'];
+				pstext = [pstext '     desc.putString( charIDToTypeID( "ChnN" ), "' c '" );'];
 			end
 		end
 	end
@@ -179,13 +187,14 @@ if f ~= -1
 	pstext = [pstext '}'];
 	pstext = [pstext 'result;'];
 	
-	psresult = psjavascriptu(pstext);
+% 	psresult = psjavascriptu(pstext);
+	fprintf(fid_in, pstext);
 	
-	delete(psmatfile);
+% 	delete(psmatfile);
 	
-	if ~strcmp(psresult, 'OK')
-	    error(psresult);
-	end
+% 	if ~strcmp(psresult, 'OK')
+% 	    error(psresult);
+% 	end
 else
 	error(msg);
 end
