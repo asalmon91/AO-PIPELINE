@@ -56,7 +56,7 @@ nFrames = str2double(nameparts{find(strcmp(nameparts, 'n'))+1});
 % accurate. Check to see if the SR_AVI was output, and determine the # of
 % frames that way. Otherwise use the filename and hope for the best
 
-% sr_avi_path = fullfile(out_proc, '..', 'SR_AVIs');
+sr_avi_path = fullfile(out_proc, '..', 'SR_AVIs');
 % avi_search = dir(fullfile(sr_avi_path, [dmb_name, '*.avi']));
 % if ~isempty(avi_search)
 % 	if numel(avi_search) > 1

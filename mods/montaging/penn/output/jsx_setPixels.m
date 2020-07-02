@@ -66,7 +66,7 @@ end
 nameparts = strsplit(tempname, filesep);
 tmpname = [nameparts{end}, '.bin'];
 psmatfile = fullfile(tmpfolder, tmpname);
-psmatfile = strrep(psmatfile, '\', '\\\\');
+psmatfile_text = strrep(psmatfile, '\', '\\\\');
 
 if exist(psmatfile, 'file')
     delete(psmatfile);
@@ -118,7 +118,7 @@ if f ~= -1
 	pstext = [pstext 'var wos = $.os.search(/windows/i) != -1;'];
 	pstext = [pstext 'if ( LayerKind.NORMAL == activeDocument.activeLayer.kind ) {'];
 	pstext = [pstext 'var desc = new ActionDescriptor();'];
-	pstext = [pstext 'desc.putString( app.charIDToTypeID( "File" ), "' psmatfile '");'];
+	pstext = [pstext 'desc.putString( app.charIDToTypeID( "File" ), "' psmatfile_text '");'];
 	pstext = [pstext 'desc.putEnumerated( app.charIDToTypeID( "Cmd " ), app.charIDToTypeID( "TCmd" ), app.charIDToTypeID( "MatP" ) );'];
 
 	if exist('c', 'var')
