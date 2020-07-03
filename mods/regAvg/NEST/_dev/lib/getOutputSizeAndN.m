@@ -97,9 +97,14 @@ if exist('current_modality', 'var') ~=0 && ~isempty(current_modality)
         % Assume in this case that something got screwed up in the cropping
         cropErr = true;
         return;
-    end
+	end
     
-    bin_sr_vid = fn_read_AVI(fullfile(sr_avi_path, [bin_name, '.avi']));
+	try
+		bin_sr_vid = fn_read_AVI(fullfile(sr_avi_path, [bin_name, '.avi']));
+	catch me
+		% todo: handle error correctly
+		return
+	end
     bin_map = sum(bin_sr_vid, 3)./255;
     if numel(find(bin_map(:)==0)) > 0
         cropErr = true;

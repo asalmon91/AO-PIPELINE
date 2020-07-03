@@ -13,7 +13,7 @@ THR_DEF = 1; % standard deviations away from the mean
 
 %% Get current python environment
 pe = pyenv;
-if isempty(pe.Version) || str2double(pe.Version) >= 3
+if strcmp(pe.Version, '') || str2double(pe.Version) >= 3
     try
         pyenv('Version', '2.7')
     catch me
