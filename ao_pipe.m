@@ -223,10 +223,10 @@ for ii=1:numel(gui.root_path_list)
     save_full_pipe(pipe_data, opts, paths);
     uiwait(gui.fig, 1);
 
-    %% Montaging - currently broken
-%     pipe_data = montage_FULL(pipe_data, paths, opts);
-%     save_full_pipe(pipe_data, opts, paths);
-%     uiwait(gui.fig, 1);
+    %% Montaging
+    pipe_data = montage_FULL(pipe_data, paths, opts);
+    save_full_pipe(pipe_data, opts, paths);
+    uiwait(gui.fig, 1);
     
     %% Analysis
 %     [pipe_data, paths] = analysis_FULL(pipe_data, paths, opts);
