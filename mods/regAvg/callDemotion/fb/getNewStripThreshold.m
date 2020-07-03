@@ -44,6 +44,9 @@ all_strip_nccs = all_strip_nccs(~isnan(all_strip_nccs));
 
 % norm_all_strip_nccs = (all_strip_nccs - mean(all_strip_nccs(:)))./std(all_strip_nccs(:));
 new_thr = mean(all_strip_nccs(:)) + THR_DEF*std(all_strip_nccs(:));
+if new_thr > 0.99
+	new_thr = 0.99;
+end
 
 if display_on
     figure;
