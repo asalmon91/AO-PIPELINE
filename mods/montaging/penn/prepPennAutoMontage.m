@@ -13,6 +13,14 @@ if exist(paths.mon_out, 'dir') == 0
     mkdir(paths.mon_out);
 end
 loc_search = find_AO_location_file(paths.root);
+if isempty(loc_search)
+	[usr_loc_fname, usr_loc_path] = uigetfile('*.csv', 'Location file not found', paths.root, ...
+		'multiselect', 'off');
+	if isnumeric(usr_loc_fname)
+		error('canceled by user');
+	end
+	loc_search.name = fullfile(usr_loc_path, usr_loc_fname);
+end
 [loc_folder, loc_name, loc_ext] = fileparts(loc_search.name);
 loc_data = processLocFile(loc_folder, [loc_name, loc_ext]);
 db.mon.loc_file = loc_search;

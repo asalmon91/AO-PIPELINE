@@ -208,16 +208,15 @@ for ii=1:numel(gui.root_path_list)
 	%% Update all databases
 	pipe_data = updateAllDB(pipe_data, paths, opts, gui);
 	
-	%% Get position file for automontaging
-	pipe_data = prepPennAutoMontage(pipe_data, paths);
-	
-	%% Processing
-	
     %% Calibration
     pipe_data = calibrate_FULL(pipe_data, paths, opts, q, gui);
     save_full_pipe(pipe_data, opts, paths);
     uiwait(gui.fig, 1);
-    
+	
+	%% Get position file for automontaging
+	% Must do this after calibration, but before any serious processing occurs
+	pipe_data = prepPennAutoMontage(pipe_data, paths);
+	
     %% Videos - Secondaries, Registration/Averaging, EMR
     pipe_data = process_vids_FULL(pipe_data, paths, opts, q, gui);
     save_full_pipe(pipe_data, opts, paths);
