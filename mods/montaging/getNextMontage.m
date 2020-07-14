@@ -142,8 +142,9 @@ for ii=1:numel(img_fnames)
     loc_data_idx = all_vn == src_vn(ii);
     src_locs(ii,:) = fixCoordsToMat(ld.mon.loc_data.coords(loc_data_idx, :));
 end
-src_locs = unique(src_locs, 'rows');
-src_vn = unique(src_vn);
+[src_vn, ~, ic] = unique(src_vn);
+src_locs = src_locs(ic, :);
+% src_locs = unique(src_locs, 'rows');
 
 % Get the distances to the new images
 trg_locs = zeros(numel(ld.vid.vid_set), 2);

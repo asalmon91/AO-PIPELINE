@@ -8,11 +8,11 @@ IGNORE_WL = {'680nm'};
 FR = 16.666; % frame rate (seconds)
 % write lag, very useful to induce some extra lag when writing videos to
 % test performace while some videos are in the middle of being written
-WRITE_LAG = 1/FR; % (seconds)
+WRITE_LAG = 0; % (seconds)
 N_PAD = 4;
 VID_NUM_EXP = sprintf('%s%s%s', ...
     '[_]', repmat('\d', 1, N_PAD), '[.]mat');
-USE_REAL_DELAYS = true; % Change this to true if transferring between two local locations
+USE_REAL_DELAYS = false; % Change this to true if transferring between two local locations
 MAX_DELAY = 60;
 
 %% Get source and target directories
@@ -24,8 +24,8 @@ MAX_DELAY = 60;
 % if isnumeric(trg)
 %     return;
 % end
-src = 'D:\workspace\JC_0605\src\JC_0605\AO_2_3_SLO\2019_06_04_OD';
-trg = 'D:\workspace\JC_0605\trg\JC_0605\AO_2_3_SLO\2019_06_04_OD';
+src = 'D:\workspace\pipe\test\DM_198007\src\DM_198007\AOSLO\2020_04_23_OD';
+trg = 'D:\workspace\pipe\test\DM_198007\trg\DM_198007\AOSLO\2020_04_23_OD';
 src_paths = initPaths(src);
 trg_paths = initPaths(trg);
 

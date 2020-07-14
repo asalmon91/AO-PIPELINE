@@ -42,10 +42,15 @@ if read_loc_file
             if isfield(ld.cal, 'dsin') && ~isempty(ld.cal.dsin) && ...
                     isfield(ld, 'id') && isfield(ld, 'date') && ...
                     isfield(ld, 'eye')
-                [out_ffname, ~, ok] = fx_fix2am(ld.mon.loc_file.name, ...
-                    'human', 'ucl', ld.cal.dsin, [], ...
-                    ld.id, ld.date, ld.eye, paths.mon);
-                ld.mon.am_file = dir(out_ffname{1});
+				try
+					[out_ffname, ~, ok] = fx_fix2am(ld.mon.loc_file.name, ...
+						'human', 'ucl', ld.cal.dsin, [], ...
+						ld.id, ld.date, ld.eye, paths.mon);
+					ld.mon.am_file = dir(out_ffname{1});
+				catch me
+					warning(me.message);
+					ok = false;
+				end
                 
                 if ~ok
 %                     warning('Failed to update %s', out_ffname{1});

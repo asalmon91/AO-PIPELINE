@@ -45,7 +45,7 @@ for ii=1:numel(fids)
         last_height = 0;
         while ~success
             [~, dmb_fname, status, stdout] = deploy_createDmb(...
-                'C:\Python27\python.exe', ...
+                paths, ...
                 fullfile(tmp_path, prime_fname), ...
                 'lps', lps, 'lbss', lbss, 'ncc_thr', ncc_thr, ...%'secondVidFnames', sec_fname_str, ...
                 'ref_frame', ref_frame, ...
@@ -59,9 +59,7 @@ for ii=1:numel(fids)
             end
 
             %% Run DeMotion
-            [status, stdout] = deploy_callDemotion(...
-                'C:\Python27\python.exe', ...
-                tmp_path, dmb_fname);
+            [status, stdout] = deploy_callDemotion(paths, tmp_path, dmb_fname);
             if status
                 error(stdout);
             end
@@ -170,11 +168,6 @@ for ii=1:numel(fids)
 		end
     end
 end
-
-
-
-
-
 
 end
 

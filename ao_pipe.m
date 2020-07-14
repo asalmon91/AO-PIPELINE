@@ -167,19 +167,16 @@ for ii=1:numel(gui.root_path_list)
     
     %% Setup output
     % R/A output
-    if ~isfield(paths, 'out') || isempty(paths.out) || exist(paths.out, 'dir') == 0
-        paths.out = fullfile(paths.pro, 'FULL');
-        if exist(paths.out, 'dir') == 0
-            mkdir(paths.out);
-        end
-    end
-    % Montage output
-    if ~isfield(paths, 'mon_out') || isempty(paths.mon_out) || exist(paths.mon_out, 'dir') == 0
-        paths.mon_out = fullfile(paths.mon, 'FULL');
-        if exist(paths.mon_out, 'dir') == 0
-            mkdir(paths.mon_out);
-        end
-    end
+	paths.out = fullfile(paths.pro, 'FULL');
+	if exist(paths.out, 'dir') == 0
+		mkdir(paths.out);
+	end
+	
+	% Montage output
+	paths.mon_out = fullfile(paths.mon, 'FULL');
+	if exist(paths.mon_out, 'dir') == 0
+		mkdir(paths.mon_out);
+	end
     
     %% Update options
     % todo: this might break in batch mode

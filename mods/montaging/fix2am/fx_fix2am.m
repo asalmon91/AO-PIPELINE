@@ -96,10 +96,9 @@ if strcmpi(penn_ucl, 'UCL') || strcmpi(penn_ucl, 'Both')
         eye_tag);
     
     % Write data
-    ucl_ok = writePosFile(...
-        out_path, out_fname, posfile, template_fname);  
-    
-    % Format output variable
+	ucl_ok = writePosFile(...
+			out_path, out_fname, posfile, template_fname);  
+	% Format output variable
     pos_index = 1;
     if strcmpi(penn_ucl, 'both')
         pos_index = 2;
