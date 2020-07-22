@@ -26,9 +26,9 @@ while ~input_is_valid
     end
     
     new_first_num = str2double(re{1});
-    if ~isnan(new_first_num) && new_first_num >=0 && ...
-            isreal(new_first_num) && isfinite(new_first_num) && ...
-            mod(new_first_num, 1) == 0
+    if ~isnan(new_first_num) && new_first_num >=0 && ... % positive number
+            isreal(new_first_num) && isfinite(new_first_num) && ... % real and finite
+            new_first_num - round(new_first_num) == 0 % integer
         input_is_valid = true;
     else
         wd = warndlg(...

@@ -3,16 +3,31 @@
 addpath(genpath('lib'), genpath('mods'));
 
 %% Constants
-src_root = 'D:\workspace\pipe\subject_info\validation\1-ctrl';
-trg_root = '\\burns.rcc.mcw.edu\AOIP\2-Purgatory\AO-PIPE-test\h2h';
+src_root = 'D:\workspace\pipe\subject_info\h2h\human-ctrl';
+trg_root = '\\burns.rcc.mcw.edu\aoip\2-Purgatory\AO-PIPE-test\h2h-tlgs';
 method_tags = {'man', 'auto'};
 n_datasets = 3;
 
+% Folders, and desired file types
 data_folder_list = {'Raw'; 'Calibration'; 'Montages'; 'Processed'};
 wl_opts = [775, 790];
 start_mods = {'confocal', 'direct', 'reflect'};
 exclude_cal_tag = 'desinusoid';
+exclude_wl = 680;
 data_exts = {'.avi', '.mat'};
+
+% Instructions
+instruct_fname = 'processing-instructions.txt';
+
+% .mat metadata fields
+VID_NUM_ROOT = 'image_acquisition_settings';
+VID_FNAMES = 'current_file_names';
+VID_PATHS = 'destination_folders';
+
+% cal files sometimes have identifying date strings
+date_expr = '[_]\d{8}[_]';
+
+masked_ID = 'DM_999999';
 
 %% Filter the input directory datasets
 src_contents = dir(src_root);
@@ -64,6 +79,7 @@ for ii=1:numel(src_contents)
 	end
 	[loc_path, loc_name, loc_ext] = fileparts(loc_file.name);
 	loc_data = processLocFile(loc_path, [loc_name, loc_ext]);
+	src_contents(ii).loc_file = fullfile(loc_path, [loc_name, loc_ext]);
 	src_contents(ii).loc_data = loc_data;
 end
 
@@ -77,6 +93,7 @@ end
 %% Make a waitbar
 wb = waitbar(0, sprintf('Setting up %s', trg_root));
 wb.Children.Title.Interpreter = 'none';
+wb.Name = sprintf('%i/%i: %s', 1, numel(proc), proc(1).dsets(1).name);
 
 %% Create these datasets in the target directory
 for dset = 1:n_datasets
@@ -113,7 +130,36 @@ for dset = 1:n_datasets
 		paths = initPaths(proc(ptype).dsets(dset).out_folder);
 		
 		%% Copy calibration data files
+		in_path = fullfile(proc(ptype).dsets(dset).orig_path, 'Calibration');
+		if ~exist(in_path, 'dir')
+			error('Folder not found: %s', in_path);
+		end
+		cal_avi_dir = dir(fullfile(in_path, '*.avi'));
+		cal_mat_dir = dir(fullfile(in_path, '*.mat'));
+		remove = contains({cal_mat_dir.name}, exclude_cal_tag);
+		cal_mat_dir(remove) = [];
+		cal_files = [cal_avi_dir; cal_mat_dir];
+		for cal = 1:numel(cal_files)
+			if ~exist(fullfile(paths.cal, cal_files(cal).name), 'file')
+				[success, msg] = copyfile(...
+					fullfile(in_path, cal_files(cal).name), ...
+					fullfile(paths.cal, cal_files(cal).name));
+				if ~success
+					warning(msg);
+				end
+			end
+		end
 		
+		%% Copy location file
+		[loc_path, loc_name, loc_ext] = fileparts(proc(ptype).dsets(dset).loc_file);
+		if ~exist(fullfile(paths.raw, [loc_name, loc_ext]), 'file')
+			[success, msg] = copyfile(...
+				proc(ptype).dsets(dset).loc_file, ...
+				fullfile(paths.raw, [loc_name, loc_ext]));
+			if ~success
+				warning(msg);
+			end
+		end
 		
 		%% Start retina data files based on the location file
 		loc_data = proc(ptype).dsets(dset).loc_data;
@@ -136,21 +182,132 @@ for dset = 1:n_datasets
 						end
 						
 						% Copy files
-						copyfile(fullfile(in_path, search_result.name), ...
-							paths.raw, search_result.name);
-						fprintf('%s\n', search_result.name);
-					end
-				end
-			end
+						if ~exist(fullfile(paths.raw, search_result.name), 'file')
+							[success, msg] = copyfile(...
+								fullfile(in_path, search_result.name), ...
+								fullfile(paths.raw, search_result.name));
+							if success
+								fprintf('%s\n', search_result.name);
+							else
+								warning(msg);
+							end
+						end
+					end % end ext
+				end % end wl
+			end % end mod
 			
 			waitbar(loc/numel(loc_data.vidnums), wb, loc_data.vidnums{loc});
-		end
+		end % end loc
+		wb.Name = sprintf('%i/%i: %s', 1, numel(proc), proc(ptype).dsets(dset).append_name);
+	end % end pytpe
+end % end dset
+
+%% Renumber AO videos to simplify processing curated datasets
+for dset = 1:n_datasets
+	for ptype = 1:numel(proc)
+		paths = initPaths(proc(ptype).dsets(dset).out_folder);
+		resetAOvidnums(paths.raw);
 	end
-
-
-
 end
 
-	
+%% Randomize and mask
+[~,Ir] = sort(rand(n_datasets*numel(method_tags), 1));
+k=0;
+for dset = 1:n_datasets
+	for ptype = 1:numel(proc)
+		k=k+1;
+		out_folder_name = proc(ptype).dsets(dset).out_folder;
+		new_out_folder_name = fullfile(trg_root, sprintf('%i', Ir(k)));
+		movefile(out_folder_name, new_out_folder_name);
+		proc(ptype).dsets(dset).masked_folder_name = new_out_folder_name;
+		
+		
+		% Make a processing instructions file
+		fid = fopen(fullfile(new_out_folder_name, instruct_fname), 'w');
+		if strcmp(proc(ptype).type, 'man')
+			instruct_text = 'Process this dataset manually';
+		elseif strcmp(proc(ptype).type, 'auto')
+			instruct_text = 'Process this dataset with the AO-PIPELINE';
+		else
+			error('Somehow an unexpected processing method (%s) got in here', proc(ptype).type);
+		end
+		fprintf(fid, '%s', instruct_text);
+		fclose(fid);
+		
+		% Rename all videos and headers
+		new_ID = masked_ID;
+		proc(ptype).dsets(dset).new_ID = new_ID;
+		paths = initPaths(new_out_folder_name);
+		
+		old_ID = [];
+		raw_dir = dir(paths.raw);
+		for f = 1:numel(raw_dir)
+			if raw_dir(f).isdir
+				continue;
+			end
+			if isempty(old_ID)
+				old_ID = getID(raw_dir(f).name);
+				if strcmp(old_ID, new_ID)
+					% Must have already done this dataset
+					continue;
+				end
+				proc(ptype).dsets(dset).orig_ID = old_ID;
+			end
+			
+			% Rename
+			in_fname = raw_dir(f).name;
+			out_fname = strrep(in_fname, old_ID, new_ID);
+			if ~exist(fullfile(paths.raw, out_fname), 'file')
+				movefile(...
+					fullfile(paths.raw, in_fname), ...
+					fullfile(paths.raw, out_fname));
+			end
+			
+			% If .mat, remove identifying info
+			if strcmp(out_fname(end-3:end), '.mat')
+				load(fullfile(paths.raw, out_fname), VID_NUM_ROOT)
+				eval(sprintf('%s.%s = '''';', VID_NUM_ROOT, VID_FNAMES)); % erase output names
+				eval(sprintf('%s.%s = '''';', VID_NUM_ROOT, VID_PATHS)); % erase output path
+				save(fullfile(paths.raw, out_fname), VID_NUM_ROOT, ...
+					'-append', '-nocompression');
+			end
+		end
+		
+		% Remove identifying info from calibration files as well
+		rem_files = dir(fullfile(paths.cal, sprintf('*_%inm_*', exclude_wl)));
+		for f = 1:numel(rem_files)
+			delete(fullfile(paths.cal, rem_files(f).name));
+		end
+		
+		cal_files = dir(paths.cal);
+		for f = 1:numel(cal_files)
+			if cal_files(f).isdir
+				continue;
+			end
+			
+			date_expr_start = regexp(cal_files(f).name, date_expr);
+			if ~isempty(date_expr_start)
+				new_cal_name = strrep(cal_files(f).name, ...
+					cal_files(f).name(date_expr_start:date_expr_start+8), '');
+				movefile(...
+					fullfile(paths.cal, cal_files(f).name), ...
+					fullfile(paths.cal, new_cal_name));
+			else
+				new_cal_name = cal_files(f).name;
+			end
+			
+			% If .mat, remove identifying info
+			if strcmp(new_cal_name(end-3:end), '.mat')
+				load(fullfile(paths.cal, new_cal_name), VID_NUM_ROOT)
+				eval(sprintf('%s.%s = '''';', VID_NUM_ROOT, VID_FNAMES)); % erase output names
+				eval(sprintf('%s.%s = '''';', VID_NUM_ROOT, VID_PATHS)); % erase output path
+				save(fullfile(paths.cal, new_cal_name), VID_NUM_ROOT, ...
+					'-append', '-nocompression');
+			end
+		end
+	end
+end
 
+%% Perhaps most importantly, save proc!
+save(fullfile(src_root, 'pipe-test-masked.mat'), 'proc')
 
