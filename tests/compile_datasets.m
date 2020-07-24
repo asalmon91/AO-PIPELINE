@@ -19,6 +19,10 @@ data_exts = {'.avi', '.mat'};
 % Instructions
 instruct_fname = 'processing-instructions.txt';
 
+% Timing spreadsheets
+man_timing_fname = 'manual-timing.xlsx';
+auto_timing_fname = 'pipeline-timing.xlsx';
+
 % .mat metadata fields
 VID_NUM_ROOT = 'image_acquisition_settings';
 VID_FNAMES = 'current_file_names';
@@ -222,17 +226,29 @@ for dset = 1:n_datasets
 		proc(ptype).dsets(dset).masked_folder_name = new_out_folder_name;
 		
 		
-		% Make a processing instructions file
+		% Make a processing instructions file and copy timing spreadsheet
 		fid = fopen(fullfile(new_out_folder_name, instruct_fname), 'w');
 		if strcmp(proc(ptype).type, 'man')
 			instruct_text = 'Process this dataset manually';
+			
+			out_timing_fname = man_timing_fname;
 		elseif strcmp(proc(ptype).type, 'auto')
 			instruct_text = 'Process this dataset with the AO-PIPELINE';
+			
+			out_timing_fname = auto_timing_fname;
 		else
 			error('Somehow an unexpected processing method (%s) got in here', proc(ptype).type);
 		end
+		% Write text file
 		fprintf(fid, '%s', instruct_text);
 		fclose(fid);
+		% Copy timing file
+		[success, msg] = copyfile(...
+				fullfile(src_root, out_timing_fname), ...
+				fullfile(new_out_folder_name, out_timing_fname));
+		if ~success
+			warning(msg);
+		end
 		
 		% Rename all videos and headers
 		new_ID = masked_ID;
