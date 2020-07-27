@@ -192,6 +192,17 @@ function [status, stdout] = processSecondary(dmp_ffname, vid_ffname, paths)
 
 [~, vid_name, vid_ext] = fileparts(vid_ffname);
 
+%% Get current python environment
+pe = pyenv;
+if strcmp(pe.Version, '') || str2double(pe.Version) >= 3
+    try
+        pyenv('Version', '2.7')
+    catch me
+        warning('Failed to load python 2.7');
+		error(me.msg)
+    end
+end
+
 %% Load .dmp and update primary sequence name
 fid = py.open(dmp_ffname, 'r');
 pick = py.pickle.load(fid);
