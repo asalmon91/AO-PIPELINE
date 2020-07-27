@@ -106,7 +106,7 @@ for ii=1:numel(fids)
 				% Modify video name in dmp to apply strip reg to secondaries			
 				[status, stdout] = processSecondary(...
 					fullfile(tmp_path, dmp_fname), ...
-					fullfile(tmp_path, sec_fnames{mm}));
+					fullfile(tmp_path, sec_fnames{mm}), paths);
 				if ~status
 					error(stdout);
 				end
@@ -188,7 +188,7 @@ close(vw);
 
 end
 
-function [status, stdout] = processSecondary(dmp_ffname, vid_ffname)
+function [status, stdout] = processSecondary(dmp_ffname, vid_ffname, paths)
 
 [~, vid_name, vid_ext] = fileparts(vid_ffname);
 
@@ -206,12 +206,14 @@ fid.close();
 % calling_fx_ffname = mfilename('fullpath');
 % path_parts = strsplit(calling_fx_ffname, filesep);
 % py_path = calling_fx_ffname(1:end-numel(path_parts{end}));
-py_path = 'D:\Code\AO\_dev\tmp\AO-PIPELINE\mods\regAvg\callDemotion\fb';
-py_ffname = fullfile(py_path, 'reprocessWithDMP.py');
+% py_path = 'D:\Code\AO\_dev\tmp\AO-PIPELINE\mods\regAvg\callDemotion\fb';
+% py_ffname = fullfile(py_path, 'reprocessWithDMP.py');
 
 %% Process the .dmp
 [status, stdout] = system(sprintf('"%s" "%s" --dmpFFname "%s"', ...
-    'C:\Python27\python.exe', py_ffname, dmp_ffname));
+    getIniPath(paths.third_party, 'Python 2.7'), ...
+	getIniPath(paths.third_party, 'reprocessWithDMP'), ...
+	dmp_ffname));
 if status ~=0
     error(stdout);
 else
