@@ -3,8 +3,8 @@
 addpath(genpath('lib'), genpath('mods'));
 
 %% Constants
-src_root = 'D:\workspace\pipe\subject_info\h2h\human-ctrl';
-trg_root = '\\burns.rcc.mcw.edu\aoip\2-Purgatory\AO-PIPE-test\h2h-tlgs';
+src_root = '\\burns.rcc.mcw.edu\aoip\2-Purgatory\AO-PIPE-test\tmp\human-ctrl';
+trg_root = 'C:\pipe-test\h2h';
 method_tags = {'man', 'auto'};
 n_datasets = 3;
 
