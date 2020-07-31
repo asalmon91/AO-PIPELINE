@@ -3,8 +3,10 @@
 addpath(genpath('lib'), genpath('mods'));
 
 %% Constants
-src_root = '\\burns.rcc.mcw.edu\aoip\2-Purgatory\AO-PIPE-test\tmp\human-ctrl';
-trg_root = 'C:\pipe-test\h2h';
+src_root = '\\burns.rcc.mcw.edu\AOIP\2-Purgatory\AO-PIPE-test\tmp\human-ctrl';
+trg_root = 'C:\pipe-test\human';
+masked_ID = 'JC_999999';
+
 method_tags = {'man', 'auto'};
 n_datasets = 3;
 
@@ -30,8 +32,6 @@ VID_PATHS = 'destination_folders';
 
 % cal files sometimes have identifying date strings
 date_expr = '[_]\d{8}[_]';
-
-masked_ID = 'DM_999999';
 
 %% Filter the input directory datasets
 src_contents = dir(src_root);
