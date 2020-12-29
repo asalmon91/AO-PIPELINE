@@ -148,7 +148,7 @@ src_locs = src_locs(ic, :);
 
 % Get the distances to the new images
 trg_locs = zeros(numel(ld.vid.vid_set), 2);
-trg_dists = zeros(numel(ld.vid.vid_set), numel(src_vn));
+trg_dists = zeros(numel(ld.vid.vid_set), size(src_locs, 1));
 trg_vn = zeros(size(ld.vid.vid_set));
 remove = false(size(ld.vid.vid_set));
 for ii=1:numel(ld.vid.vid_set)

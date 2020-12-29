@@ -59,7 +59,11 @@ catch me
 		rethrow(me)
 	end
 end
-fids = get_best_n_frames_per_cluster(frames, opts.n_frames);
+if isfield(frames(1), 'TRACK_MOTION_FAILED') && frames(1).TRACK_MOTION_FAILED
+    fids = get_best_n_frames_overall(frames, 1); % Failed
+else % Success:
+    fids = get_best_n_frames_per_cluster(frames, opts.n_frames);
+end
 % Remove clusters with less than the number requested
 % todo: functionalize
 remove_link = false(size(fids));
@@ -92,8 +96,13 @@ this_vidset.t_proc_arfs = clock;
 % overhead
 if opts.strip_reg
 	try
-		this_vidset.vids(1).fids = quickSR(vid, this_vidset.vidnum, fids, ...
+		[this_vidset.vids(1).fids, success] = ...
+            quickSR(vid, this_vidset.vidnum, fids, ...
 			this_dsin, paths, prime_fname, sec_fnames);
+        if ~success
+            warning('Video %i failed to register', ...
+                this_vidset.vidnum);
+        end
 	catch me
 		if strcmp(me.identifier, 'parallel:gpu:array:OOM')
 			this_vidset.vids(1).fids = quickSR(gather(vid), this_vidset.vidnum, fids, ...

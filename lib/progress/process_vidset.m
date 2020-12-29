@@ -294,6 +294,9 @@ for ii=1:numel(opts.mod_order)
                     out_fnames = strrep(out_fnames, '.tif', '_repaired.tif');
                     paths.emr = fullfile(paths.imgs, EMR_EXT);
                     fids(jj).cluster(kk).out_fnames = out_fnames;
+                    if vid_set.profiling
+                        vid_set.t_proc_emr = clock;
+                    end
                     
                     %% Copy all successful files to full root
                     for mm=1:numel(out_fnames)
@@ -322,7 +325,7 @@ for ii=1:numel(opts.mod_order)
                 end
             end % End of DeMotion feedback loop
             %% Remove the temporary folder
-%             rmdir(fullfile(paths.tmp, '..'), 's')
+            rmdir(fullfile(paths.out, append_text), 's')
         end % End of this cluster (reference frame)
     end % End of this linked group of frames
     vid_set.vids(ii).fids = fids;

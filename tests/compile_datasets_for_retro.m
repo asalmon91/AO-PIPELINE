@@ -1,14 +1,15 @@
 %% Compile datasets
 %% Imports
-addpath(genpath('lib'), genpath('mods'));
+cd('\\burns.rcc.mcw.edu\aoip\1-Software\AO_Tools\2-Processing\AO-PIPELINE-beta\AO-PIPELINE')
+addpath(genpath('lib'), genpath('mods'), genpath('tests'));
 
 %% Constants
-src_root = '\\burns.rcc.mcw.edu\AOIP\2-Purgatory\AO-PIPE-test\tmp\human-ctrl';
-trg_root = 'C:\pipe-test';
-masked_ID = 'JC_999999';
+src_root = '\\burns.rcc.mcw.edu\aoip\2-Purgatory\AO-PIPE-test\retro\subject-info\3-alb';
+trg_root = 'C:\pipe-test\3-alb';
+% masked_ID = 'JC_999999';
 
-method_tags = {'man', 'auto'};
-n_datasets = 3;
+method_tags = {'auto'};
+n_datasets = 11;
 
 % Folders, and desired file types
 data_folder_list = {'Raw'; 'Calibration'; 'Montages'; 'Processed'};
@@ -18,12 +19,12 @@ exclude_cal_tag = 'desinusoid';
 exclude_wl = 680;
 data_exts = {'.avi', '.mat'};
 
-% Instructions
-instruct_fname = 'processing-instructions.txt';
+% % Instructions
+% instruct_fname = 'processing-instructions.txt';
 
-% Timing spreadsheets
-man_timing_fname = 'manual-timing.xlsx';
-auto_timing_fname = 'pipeline-timing.xlsx';
+% % Timing spreadsheets
+% man_timing_fname = 'manual-timing.xlsx';
+% auto_timing_fname = 'pipeline-timing.xlsx';
 
 % .mat metadata fields
 VID_NUM_ROOT = 'image_acquisition_settings';
@@ -103,9 +104,16 @@ wb.Name = sprintf('%i/%i: %s', 1, numel(proc), proc(1).dsets(1).name);
 for dset = 1:n_datasets
 	
 	for ptype = 1:numel(proc)
+        %% Get date and eye info
+        dset_name = src_contents(dset).name;
+        datestart = regexp(dset_name, '\d{8}-O[DS]');
+        date_eye_dir = [...
+            datestr(datetime(dset_name(datestart:datestart+8-1), ...
+            'InputFormat', 'yyyyMMdd'), 'yyyy_mm_dd'), '_', ...
+            dset_name(end-1:end)];
 		
 		%% Make a folder for each combination of dataset
-		proc(ptype).dsets(dset).append_name = [proc(ptype).type, '-', src_contents(dset).name];
+		proc(ptype).dsets(dset).append_name = [proc(ptype).type, '-', dset_name, filesep, date_eye_dir];
 		proc(ptype).dsets(dset).out_folder = fullfile(trg_root, proc(ptype).dsets(dset).append_name);
 		
 		if ~exist(proc(ptype).dsets(dset).out_folder, 'dir')

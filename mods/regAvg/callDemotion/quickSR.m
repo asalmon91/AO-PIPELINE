@@ -1,6 +1,9 @@
 function [fids, success] = quickSR(vid, vid_num, fids, this_dsin, paths, prime_fname, sec_fnames)
 %quickSR quick Strip-registration
 
+%% Defaults
+success = false;
+
 %% Definitions
 success_crit    = 3/4 * size(vid,1);
 short_circuit   = 1/3 * size(vid,1);
@@ -35,7 +38,7 @@ for ii=1:numel(fids)
         
         %% Create batch
         % Construct secondary filename string
-        sec_fname_str = strjoin(sec_fnames, ', ');
+        %sec_fname_str = strjoin(sec_fnames, ', ');
         
         % Setup defaults
         success = false;
@@ -61,13 +64,20 @@ for ii=1:numel(fids)
             %% Run DeMotion
             [status, stdout] = deploy_callDemotion(paths, tmp_path, dmb_fname);
             if status
-                error(stdout);
+                warning(stdout);
+                success = false;
+                break;
             end
 
             %% Get output
             img_path = fullfile(tmp_path, '..', 'Processed', 'SR_TIFs');
             img_dir = dir(fullfile(img_path, '*.tif'));
             img_fnames = {img_dir.name}';
+            if isempty(img_fnames)
+                success = false;
+                break;
+            end
+                
             % todo: include support for other wavelengths and primary
             % modalities
             [~,prime_name] = fileparts(prime_fname);

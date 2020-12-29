@@ -48,7 +48,12 @@ end
 %% ARFS
 arfs_data_info = dir(fullfile(paths.raw, '*dmbdata.mat'));
 if numel(arfs_data_info) ~= 1
-	error('Failed to find 1 arfs data file in %s', paths.raw);
+    if isempty(arfs_data_info)
+        error('Failed to find any arfs data files in %s', paths.raw);
+    elseif numel(arfs_data_info) > 1
+        [~,I] = max([arfs_data_info.datenum]);
+        arfs_data_info = arfs_data_info(I);
+    end
 end
 load(fullfile(paths.raw, arfs_data_info.name), 'dmb');
 
@@ -88,12 +93,28 @@ t_arfs = diff(sort(t_arfs));
 %% DeMotion
 dmp_list = strrep(dmb_list, '.dmb', '.dmp');
 t_dmp = zeros(size(dmp_list));
+remove = false(size(dmp_list));
 for dmp_idx = 1:numel(dmp_list)
-    dmp_search = dir(fullfile(paths.raw, dmp_list{dmp_idx}));
-    if numel(dmp_search) ~= 1
-        error('Investigate failed search for: %s', dmb_list{dmp_idx});
+    if ~exist(fullfile(paths.raw, dmp_list{dmp_idx}), 'file')
+        warning('Failed to find %s', dmp_list{dmp_idx});
+        remove(dmp_idx) = true;
+%         error('Investigate failed search for: %s', dmb_list{dmp_idx});
     end
-    t_dmp(dmp_idx) = days2sec(dmp_search.datenum);
+    
+    % EMR modifies the .dmp so you have to look at date created
+    d = GetCreationTime(fullfile(paths.raw, dmp_list{dmp_idx}));
+	t_create = datetime(d.Year, d.Month, d.Day, d.Hour, d.Minute, d.Second);
+	t_dmp(dmp_idx) = days2sec(datenum(t_create));
+    
+%     dmp_search = dir(fullfile(paths.raw, dmp_list{dmp_idx}));
+%     if numel(dmp_search) ~= 1
+%         error('Investigate failed search for: %s', dmb_list{dmp_idx});
+%     end
+%     t_dmp(dmp_idx) = days2sec(dmp_search.datenum);
+end
+t_dmp(remove) = [];
+if isempty(t_dmp)
+    error('No .dmp''s found');
 end
 t_dmp = diff(sort(t_dmp));
 % figure; histogram(t_dmp)

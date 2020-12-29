@@ -39,10 +39,10 @@ if ~isempty(ld.vid) && isfield(ld.vid, 'vid_set') && ...
             
             if numel(mods) < numel(opts.mod_order)
                 continue;
-			end
-			
-			% Check that at least the expected modalities exist
-			match_found = false(size(opts.mod_order));
+            end
+            
+            % Check that at least the expected modalities exist
+            match_found = false(size(opts.mod_order));
             for jj=1:numel(opts.mod_order)
                 mod_wl_check = strcmp(mods, opts.mod_order{jj}) & ...
                     wls == opts.lambda_order(jj);
@@ -61,7 +61,7 @@ if ~isempty(ld.vid) && isfield(ld.vid, 'vid_set') && ...
             for jj=1:numel(ld.vid.vid_set(ii).vids)
                 head_fname = strrep(...
                     ld.vid.vid_set(ii).vids(jj).filename, ...
-                        VID_EXT(2:end), HEAD_EXT(2:end));
+                    VID_EXT(2:end), HEAD_EXT(2:end));
                 if exist(fullfile(paths.raw, head_fname), 'file') ~= 0
                     ld.vid.vid_set(ii).fov = ...
                         getFOV(fullfile(paths.raw, head_fname));

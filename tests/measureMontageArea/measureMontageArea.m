@@ -1,4 +1,6 @@
 %% Determine montage area
+%% Imports
+addpath(genpath('lib'));
 
 %% Get images
 [png_fnames, png_path] = uigetfile('*.png', 'Select transparent .png of the montage', 'multiselect', 'on');

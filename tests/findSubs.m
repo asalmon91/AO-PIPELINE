@@ -7,8 +7,8 @@ src_path = '\\burns.rcc.mcw.edu\AOIP\17439-FullBank\';
 src = dir(src_path);
 ignore = {'.'; '..'};
 BUILD_TAG = 'AO_2_3_SLO';
-hasAO2p3 = false(size(src));
-hasLocFile = hasAO2p3;
+hasBuild = false(size(src));
+hasLocFile = hasBuild;
 parfor ii=1:numel(src)
     if ~src(ii).isdir || any(strcmp(src(ii).name, ignore))
         continue;
@@ -16,7 +16,7 @@ parfor ii=1:numel(src)
     contents = dir(fullfile(src_path, src(ii).name));
     folder_names = {contents.name}';
     if any(strcmp(BUILD_TAG, folder_names))
-        hasAO2p3(ii) = true;
+        hasBuild(ii) = true;
         fprintf('%s has %s\n', src(ii).name, BUILD_TAG);
         
         loc_file = find_AO_location_file(...
@@ -29,7 +29,7 @@ parfor ii=1:numel(src)
 end
 
 %% Filter
-src = src(hasAO2p3 & hasLocFile);
+src = src(hasBuild & hasLocFile);
 
 %% Open for manual viewing
 trg = uigetdir(src_path, 'Select output folder');
@@ -40,6 +40,7 @@ for ii=1:numel(src)
     loc_file = find_AO_location_file(...
             fullfile(src(ii).folder, src(ii).name, BUILD_TAG));
     winopen(loc_file.folder);
+%     winopen(fullfile(src(ii).folder, src(ii).name, BUILD_TAG));
     
     re = questdlg('Copy this dataset?','Copy?','Yes','No','Quit','Yes');
     switch re
